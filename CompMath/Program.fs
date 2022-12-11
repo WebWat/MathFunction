@@ -18,7 +18,7 @@ let limit (func: float -> float) (x: float) (accuracy: int) (position: Position)
     if result = infinity || Double.IsNaN result then
         let needed = pown 10. -accuracy
 
-        let rec calculate approach eps ldiff mayBeInf =
+        let rec calculate eps ldiff mayBeInf =
             // Take two points on the interval
             let (first, second) = 
                  match position with
@@ -41,9 +41,9 @@ let limit (func: float -> float) (x: float) (accuracy: int) (position: Position)
                     if second > first then infinity else -infinity
                 else
                     second
-            else calculate second (eps * 0.1) diff false
+            else calculate (eps * 0.1) diff false
 
-        calculate 0.0 0.01 (abs(func (x - 0.2) - func (x - 0.1))) true
+        calculate 0.01 (abs(func (x - 0.2) - func (x - 0.1))) true
     else
         result
 

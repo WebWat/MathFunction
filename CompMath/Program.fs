@@ -2,7 +2,7 @@
 
 open System
 
-exception DontExist
+exception NotExist
 
 type Position =
     | Left
@@ -25,7 +25,7 @@ let limit (func: float -> float) (x: float) (accuracy: int) (position: Position)
             let diff = abs(second - first)
 
             // If there is no function
-            if Double.IsNaN diff then raise (DontExist)
+            if Double.IsNaN diff then raise (NotExist)
 
             printfn "\nStart => %.20f\nEnd => %.20f\nDiff => %.20f\nEps  => %.20f\nldiff => %.20f" first second diff eps ldiff
             
@@ -42,24 +42,6 @@ let limit (func: float -> float) (x: float) (accuracy: int) (position: Position)
     else
         result
 
-//printfn "%f" (limit (fun x -> 1.0 / x) 0 3 Position.Left)
-//printfn "%f" (limit (fun x -> 1.0 / x) 0 3 Position.Right)
-//printfn "%f" (limit (fun x -> x * x) 2 3 Position.Left)
 
-//printfn "%f" (limit (fun x -> (x - 5.0) / abs(x - 5.0)) 5 10 Position.Left)
-//printfn "%f" (limit (fun x -> (x - 5.0) / abs(x - 5.0)) 5 Position.Left)
-
-//printfn "%f" (limit (fun x -> sin(x) / x) 0 Position.Right)
-//printfn "%f" (limit (fun x -> sin(x) / x) 0 Position.Left)
-
-//printfn "%f" (limit (fun x -> x * x / (1.0 - x * x)) 1 Position.Right)
-//printfn "%f" (limit (fun x -> x * x / (1.0 - x * x)) 1 3 Position.Right)
-
-
-//printfn "%.30f" (limit (fun x -> Math.Atan(1.0 / (1.0 - x))) 1.0 10 Position.Left)
-//printfn "%.30f" (Math.PI / 2.0)
-//printfn "%f" (limit (fun x -> Math.Atan(1.0 / (1.0 - x))) 1 Position.Right)
-
-printfn "%f" (limit (fun x -> (sin(2.0 * x) - 2.0 * sin x)/(x * log(cos(5.0 * x)))) 0 20 Position.Left)
-printfn "%.20f" (limit (fun x -> (sqrt(cos x) - Math.Pow(cos x, 1./3.))/pown (Math.Atan(x)) 2) 0 20 Position.Left)
+printfn "%.20f" (limit (fun x -> 1./log (1. + x) - 1. / x) 0 10 Position.Left)
 Console.ReadLine() |> ignore

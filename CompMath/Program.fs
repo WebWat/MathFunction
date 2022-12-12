@@ -63,7 +63,7 @@ let checkPos (left: int) (right: int) (symbol: char) (line: string) (current: in
         index
 
 
-let getLines (symbol: char) (line: string) =
+let breakLine (symbol: char) (line: string) =
     let clearBracket (line: string) =
         let (l, r) = getBrackets line
         if line[0] = '(' && 0 = l && line.Length - 1 = r then
@@ -94,20 +94,23 @@ let getLines (symbol: char) (line: string) =
     else
         ("-", "-")
 
-let op = [|'+';'-';'*';'/';|]
+let convert2func (line: string) : Node =
+    let op = [|'+';'-';'*';'/';|]
 
-let rec check (arg: string * string) (line: string) (i: int) : (string * string * int) =
-    match arg with 
-    | ("-", "-") -> check (getLines (op[i + 1]) line) (line) (i + 1)
-    | (val1, val2) -> (val1, val2, i)
+    let rec searchOperation (arg: string * string) (line: string) (i: int) =
+        match arg with 
+        | ("-", "-") -> searchOperation (breakLine (op[i + 1]) line) (line) (i + 1)
+        | (val1, val2) -> (val1, val2, i)
 
-let rec convert (line: string) : Node =
-    if isNumber(line) then 
-        { Value = Some(int line); Operation = ""; Right = None; Left = None }
-    else
-        let (lft, rght, i) = check (getLines op[0] line) line 0
-        printfn "%s <-> %s" lft rght
-        { Value = None; Operation = string op[i]; Right = Some(convert(rght)); Left = Some(convert(lft)) }
+    let rec convert line =
+        if isNumber(line) then 
+            { Value = Some(int line); Operation = ""; Right = None; Left = None }
+        else
+            let (lft, rght, i) = searchOperation (breakLine op[0] line) line 0
+            printfn "%s <-> %s" lft rght
+            { Value = None; Operation = string op[i]; Right = Some(convert(rght)); Left = Some(convert(lft)) }
+
+    convert line
             
 
 let rec calculate (node: Node) : int =
@@ -122,11 +125,6 @@ let rec calculate (node: Node) : int =
         | _ -> failwith "Not working"
 
 
-printfn "Result: %d" (calculate (convert "(2+2222)*2"))
-//printfn "Result: %d" (calculate (convert "2*(2+2)"))
-//printfn "Result: %d" (calculate (convert "(2+2)*(2+2)"))
-//printfn "Result: %d" (calculate (convert "2+2*(2+2)"))
-//printfn "Result: %d" (calculate (convert "2*(2+2)+2"))
-//printfn "Result: %d" (calculate (convert "(2+2)*2+(2+2)*2+(2+2*2)"))
+printfn "Result: %d" (calculate (convert2func "(2+2)*(2+3)*(2+4)"))
 
 Console.ReadLine() |> ignore

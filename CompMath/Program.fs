@@ -58,15 +58,18 @@ let checkPos (left: int) (right: int) (symbol: char) (line: string) (current: in
         if l < offset && offset < r then
             -1
         else
-           index 
+            index 
     else
         index
 
 
 let getLines (symbol: char) (line: string) =
-    let clearBracket (line: string) = 
-        if line[0] = '(' && line[line.Length - 1] = ')' then line[1..line.Length - 2]
-        else line
+    let clearBracket (line: string) =
+        let (l, r) = getBrackets line
+        if line[0] = '(' && 0 = l && line.Length - 1 = r then
+            line[1..line.Length - 2]
+        else
+            line 
 
     let data = line
     let charArray = data.ToCharArray()
@@ -119,10 +122,11 @@ let rec calculate (node: Node) : int =
         | _ -> failwith "Not working"
 
 
-printfn "Result: %d" (calculate (convert "(2+2)*2"))
-printfn "Result: %d" (calculate (convert "2*(2+2)"))
-printfn "Result: %d" (calculate (convert "(2+2)*(2+2)"))
-printfn "Result: %d" (calculate (convert "2+2*(2+2)"))
-printfn "Result: %d" (calculate (convert "2*(2+2)+2"))
+printfn "Result: %d" (calculate (convert "(2+2222)*2"))
+//printfn "Result: %d" (calculate (convert "2*(2+2)"))
+//printfn "Result: %d" (calculate (convert "(2+2)*(2+2)"))
+//printfn "Result: %d" (calculate (convert "2+2*(2+2)"))
+//printfn "Result: %d" (calculate (convert "2*(2+2)+2"))
+//printfn "Result: %d" (calculate (convert "(2+2)*2+(2+2)*2+(2+2*2)"))
 
 Console.ReadLine() |> ignore

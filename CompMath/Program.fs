@@ -75,19 +75,17 @@ let getLines (symbol: char) (line: string) =
 
     let index = checkPos lbracket rbracket symbol line 0
 
-    if index <> -1 && lbracket <> -1 && lbracket < index then
-        let a = charArray[..lbracket] 
+    // Right multiply / divide
+    if index <> -1 && lbracket <> -1 && lbracket < index && symbol <> '+' && symbol <> '-' then
         let b = charArray[rbracket..rbracket + 1] 
 
         let leftS = Array.IndexOf(b, symbol)
-        let rightS = Array.IndexOf(a, symbol)
         
         if leftS <> -1 then 
             (data[1..rbracket - 1], clearBracket data[rbracket + 2..])
-        elif rightS <> -1 then 
-            (clearBracket data[0..rightS - 1], data[lbracket + 1..data.Length - 2])
         else
             ("-", "-")
+    // Left operation
     elif index <> -1 then
         (data[..index - 1], clearBracket data[index + 1..])
     else
@@ -97,8 +95,8 @@ let op = [|'+';'-';'*';'/';|]
 
 let rec check (arg: string * string) (line: string) (i: int) : (string * string * int) =
     match arg with 
-    | (val1, val2) when val1 <> "-" && val2 <> "-" -> (val1, val2, i)
-    | _ -> check (getLines (op[i + 1]) line) (line) (i + 1)
+    | ("-", "-") -> check (getLines (op[i + 1]) line) (line) (i + 1)
+    | (val1, val2) -> (val1, val2, i)
 
 let rec convert (line: string) : Node =
     if isNumber(line) then 
@@ -122,9 +120,9 @@ let rec calculate (node: Node) : int =
 
 
 printfn "Result: %d" (calculate (convert "(2+2)*2"))
-//printfn "Result: %d" (calculate (convert "2*(2+2)"))
-//printfn "Result: %d" (calculate (convert "(2+2)*(2+2)"))
-//printfn "Result: %d" (calculate (convert "2+2*(2+2)"))
-//printfn "Result: %d" (calculate (convert "2*(2+2)+2"))
+printfn "Result: %d" (calculate (convert "2*(2+2)"))
+printfn "Result: %d" (calculate (convert "(2+2)*(2+2)"))
+printfn "Result: %d" (calculate (convert "2+2*(2+2)"))
+printfn "Result: %d" (calculate (convert "2*(2+2)+2"))
 
 Console.ReadLine() |> ignore

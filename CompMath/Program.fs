@@ -1,5 +1,6 @@
-﻿open System
-open Main
+﻿module Test
+
+open System
 
 
 //printfn "%A" (derivative (fun x -> Math.Pow(x, x) * tan x * 1./log(x)) [|1..5|])
@@ -22,7 +23,9 @@ let isNumber (number) =
     let mutable temp = 0
     Int32.TryParse(number.ToString(), &temp)
 
-let findRightBracket (data: string) =
+let getBrackets (data: string) =
+    let lbr = Array.IndexOf(data.ToCharArray(), '(')
+
     let rec find total current be =
         if total = 0 && be then
             current - 1
@@ -30,7 +33,35 @@ let findRightBracket (data: string) =
         elif data[current] = ')' then find (total - 1) (current + 1) true
         else find total (current + 1) be
 
-    find 0 0 false
+    if lbr = -1 then (-1, -1)
+    else (lbr, find 0 0 false)
+
+let checkPos (left: int) (right: int) (symbol: char) (line: string) (current: int)  =
+    let rec op (current: int) : int =
+        if (left, right) = (-1, -1) then 
+            Array.IndexOf(line.ToCharArray(), symbol)
+        elif current = line.Length then 
+            -1
+        else
+            if line[current] = symbol && (current > right || current < left) then
+                current
+            else
+                op (current + 1)
+
+    let index = op 0
+
+    if index > right + 1 then
+        let aff = line[right + 1..]
+        let (l, r) = getBrackets (aff)    
+        let offset = index - right - 1
+
+        if l < offset && offset < r then
+            -1
+        else
+           index 
+    else
+        index
+
 
 let getLines (symbol: char) (line: string) =
     let clearBracket (line: string) = 
@@ -39,11 +70,12 @@ let getLines (symbol: char) (line: string) =
 
     let data = line
     let charArray = data.ToCharArray()
-    let lbracket = Array.IndexOf(charArray, '(')
-    let index = Array.IndexOf(charArray, symbol)
-    let rbracket = findRightBracket data
 
-    if lbracket <> -1 && rbracket = data.Length - 1 then
+    let (lbracket, rbracket) = getBrackets data
+
+    let index = checkPos lbracket rbracket symbol line 0
+
+    if index <> -1 && lbracket <> -1 && lbracket < index then
         let a = charArray[..lbracket] 
         let b = charArray[rbracket..rbracket + 1] 
 
@@ -51,13 +83,13 @@ let getLines (symbol: char) (line: string) =
         let rightS = Array.IndexOf(a, symbol)
         
         if leftS <> -1 then 
-            (data[1..rbracket - 1], clearBracket data[leftS + 1..])
+            (data[1..rbracket - 1], clearBracket data[rbracket + 2..])
         elif rightS <> -1 then 
             (clearBracket data[0..rightS - 1], data[lbracket + 1..data.Length - 2])
         else
             ("-", "-")
     elif index <> -1 then
-        (data[..index - 1], data[index + 1..])
+        (data[..index - 1], clearBracket data[index + 1..])
     else
         ("-", "-")
 
@@ -66,7 +98,7 @@ let op = [|'+';'-';'*';'/';|]
 let rec check (arg: string * string) (line: string) (i: int) : (string * string * int) =
     match arg with 
     | (val1, val2) when val1 <> "-" && val2 <> "-" -> (val1, val2, i)
-    | _ -> check (getLines (op[i]) line) (line) (i + 1)
+    | _ -> check (getLines (op[i + 1]) line) (line) (i + 1)
 
 let rec convert (line: string) : Node =
     if isNumber(line) then 
@@ -89,10 +121,10 @@ let rec calculate (node: Node) : int =
         | _ -> failwith "Not working"
 
 
-let line = "(2+2)*2+2"
-let node = convert line
-let result = calculate node
-
-printfn "%s\nResult: %d" (node.ToString()) result
+printfn "Result: %d" (calculate (convert "(2+2)*2"))
+//printfn "Result: %d" (calculate (convert "2*(2+2)"))
+//printfn "Result: %d" (calculate (convert "(2+2)*(2+2)"))
+//printfn "Result: %d" (calculate (convert "2+2*(2+2)"))
+//printfn "Result: %d" (calculate (convert "2*(2+2)+2"))
 
 Console.ReadLine() |> ignore

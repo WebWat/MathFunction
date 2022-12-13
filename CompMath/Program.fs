@@ -15,6 +15,13 @@ type Node =
     Left: Option<Node>
     Right: Option<Node>
     }
+    member this.ToRecord() =
+        let getData (value: Option<'a>) =
+            if value.IsSome then "Some(" + value.Value.ToString() + ")"
+            else "None"
+
+        $"{{Value = {getData(this.Value)}; Operation = \"{this.Operation}\"; Left = {getData(this.Left)}; Right = {getData(this.Right)};}}"
+
     override this.ToString() =
         let getData (value: Option<'a>) =
             if value.IsSome then "Some(" + value.Value.ToString() + ")"
@@ -151,10 +158,10 @@ let rec calculateFunc (x: float) (node: Node) : float =
 let l = new Stopwatch()
 
 l.Start()
-let func = convert2func "(-1)*(sin(2*x)-2*sin(x))/(x*ln(cos(5*x)))"
+let func = convert2func "(-1)*(sin(2*x)-2*sin(pi))/(x*ln(cos(5*x)))"
 
 for i in -0.3..0.05..0.3 do
-    printfn "y( %f ) = %f | %f" i (calculateFunc i func) (-(sin(2.* i )-2.*sin(i))/(i * log(cos(5.* i))))
+    printfn "y( %f ) = %f | %f" i (calculateFunc i func) (-(sin(2.* i )-2.*sin(Math.PI))/(i * log(cos(5.* i))))
 
 l.Stop()
 

@@ -3,6 +3,7 @@
 open System
 open System.Diagnostics
 open System.Globalization
+open System.Text.RegularExpressions
 
 
 //printfn "%A" (derivative (fun x -> Math.Pow(x, x) * tan x * 1./log(x)) [|1..5|])
@@ -72,61 +73,57 @@ let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[]) 
         index
 
  
-let rec clearBrackets (line: string) =
-    let laz = lazy(getBrackets (line.ToCharArray()))
-
-    if line[0] = '(' && (laz.Force()) = (0, line.Length - 1) then
+let rec clearBrackets (line: char[]) =
+    let args = getBrackets line
+    if line[0] = '(' && args = (0, line.Length - 1) then
         clearBrackets line[1..line.Length - 2]
     else
-        line 
+        (new string(line), args)
 
-let rec breakLine (symbol: char) (line: string) =
+let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
     let charArray = line.ToCharArray()
 
-    let (lbracket, rbracket) = getBrackets charArray
+    let (lbracket, rbracket) = brackets
 
     let index = checkValueInBrackets lbracket rbracket symbol charArray
 
-    // Right: multiply & divide
-    if index <> -1 && lbracket <> -1 && lbracket < index && symbol <> '+' && symbol <> '-' then
-        let b = charArray[rbracket..rbracket + 1] 
+    let comp = lazy(Array.IndexOf(charArray[rbracket..rbracket + 1], symbol))
 
-        let leftS = Array.IndexOf(b, symbol)
-        
-        if leftS <> -1 then 
-            (line[1..rbracket - 1], line[rbracket + 2..])
-        else
-            ("-", "-")
-    // Left: all others
-    elif index <> -1 then
-        (line[..index - 1], line[index + 1..])
-    else
+    // If sin, cos, ln, ...
+    if index = -1 then
         ("-", "-")
+    // Right: multiply & divide
+    elif lbracket <> -1 && lbracket < index && symbol <> '+' && symbol <> '-' && comp.Force() <> -1 then
+        (line[0..rbracket], line[rbracket + 2..])
+    // Left: all others
+    else
+        (line[..index - 1], line[index + 1..])
 
 let convert2func (line: string) : Node =
     let operations = [|'+';'-';'*';'/';'^'|]
 
-    let rec searchOperation (arg: string * string) (line: string) (i: int) =
+    let rec searchOperation (arg: string * string) (line: string) (brackets: int * int) (i: int) =
         match arg with 
-        | ("-", "-") -> searchOperation (breakLine (operations[i + 1]) line) (line) (i + 1)
+        | ("-", "-") -> searchOperation (breakLine brackets (operations[i + 1]) line) line brackets (i + 1)
         | (val1, val2) -> (val1, val2, i)
 
-    let rec convert line =
-        let removed = clearBrackets line
+    let rec convert (line: string) = 
+        let charArray = line.ToCharArray()
+        let (removed, (l, r)) = clearBrackets charArray
 
         match removed with 
         | "x" ->  { Value = None;          Operation = "x"; Right = None; Left = None }
         | "pi" -> { Value = Some(Math.PI); Operation = "x"; Right = None; Left = None }
         | "e" ->  { Value = Some(Math.E);  Operation = "x"; Right = None; Left = None }
         | val1 when isNumber(val1)     -> { Value = Some(float val1); Operation = ""; Right = None; Left = None } //!
-        | val1 when val1[0..1] = "ln"  -> { Value = None; Operation = "ln";  Left = None; Right = Some(convert(val1[3..val1.Length - 2])) }
-        //| val1 when val1[0..1] = "lg"  -> { Value = None; Operation = "lg";  Left = None; Right = Some(convert(val1[3..val1.Length - 2])) }
-        //| val1 when val1[0..2] = "log" -> { Value = None; Operation = "log" + string val1[3]; Left = None; Right = Some(convert(val1[5..val1.Length - 2])) }
-        //| val1 when val1[0..2] = "sin" -> { Value = None; Operation = "sin"; Left = None; Right = Some(convert(val1[4..val1.Length - 2])) }
-        //| val1 when val1[0..2] = "cos" -> { Value = None; Operation = "cos"; Left = None; Right = Some(convert(val1[4..val1.Length - 2])) }
-        //| val1 when val1[0..1] = "tg"  -> { Value = None; Operation =  "tg";  Left = None; Right = Some(convert(val1[3..val1.Length - 2])) }
-        | _ ->  let (lft, rght, i) = searchOperation (breakLine operations[0] removed) removed 0
-                printfn "%s <%c> %s" lft operations[i] rght
+        | val1 when r = val1.Length - 1 && val1.StartsWith("ln") ->  { Value = None; Operation = "ln";  Left = None;  Right = Some(convert(val1[3..r - 1])) }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("lg")  -> { Value = None; Operation = "lg";  Left = None;  Right = Some(convert(val1[3..r - 1])) }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("log") -> { Value = None; Operation = "log" + string val1[3]; Left = None; Right = Some(convert(val1[5..r - 1])) }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("sin") -> { Value = None; Operation = "sin"; Left = None;  Right = Some(convert(val1[4..r - 1])) }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("cos") -> { Value = None; Operation = "cos"; Left = None;  Right = Some(convert(val1[4..r - 1])) }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("tg")  -> { Value = None; Operation =  "tg"; Left = None;  Right = Some(convert(val1[3..r - 1])) }
+        | _ ->  let (lft, rght, i) = searchOperation (breakLine (l, r) operations[0] removed) removed (l, r) 0
+                //printfn "%s <%c> %s" lft operations[i] rght
                 { Value = None; Operation = string operations[i]; Right = Some(convert(rght)); Left = Some(convert(lft)) }
 
     convert line
@@ -139,31 +136,28 @@ let rec calculateFunc (x: float) (node: Node) : float =
         match node.Operation with
         | "x" -> x
         | "ln"  -> Math.Log(calculateFunc x node.Right.Value)
-        //| "lg"  -> Math.Log10(calculateFunc x node.Right.Value)
-        //| "sin" -> Math.Sin(calculateFunc x node.Right.Value)
-        //| "cos" -> Math.Cos(calculateFunc x node.Right.Value)
-        //| "tg"  -> Math.Tan(calculateFunc x node.Right.Value)
+        | "lg"  -> Math.Log10(calculateFunc x node.Right.Value)
+        | "sin" -> Math.Sin(calculateFunc x node.Right.Value)
+        | "cos" -> Math.Cos(calculateFunc x node.Right.Value)
+        | "tg"  -> Math.Tan(calculateFunc x node.Right.Value)
         | "^"   -> Math.Pow(calculateFunc x node.Left.Value, calculateFunc x node.Right.Value)
         | "*"   -> calculateFunc x node.Left.Value * calculateFunc x node.Right.Value
         | "/"   -> calculateFunc x node.Left.Value / calculateFunc x node.Right.Value
         | "+"   -> calculateFunc x node.Left.Value + calculateFunc x node.Right.Value
         | "-"   -> calculateFunc x node.Left.Value - calculateFunc x node.Right.Value
-        | val1 when val1[0..2] = "log" -> Math.Log(calculateFunc x node.Right.Value, float (string val1[3])) // only 1-9!!!
+        | val1 when val1.StartsWith("log") -> Math.Log(calculateFunc x node.Right.Value, float (string val1[3])) // only 1-9!!!
         | _ -> failwith "Not available"
 
 let l = new Stopwatch()
 
 l.Start()
-let func = convert2func "cos(x)^2"
+let func = convert2func "(-1)*(sin(2*x)-2*sin(x))/(x*ln(cos(5*x)))"
 
-for i = 0 to 5 do
-    printfn "y( %d ) = %f" i (calculateFunc (float i) func)
+for i in -0.3..0.05..0.3 do
+    printfn "y( %f ) = %f | %f" i (calculateFunc i func) (-(sin(2.* i )-2.*sin(i))/(i * log(cos(5.* i))))
 
 l.Stop()
 
 printfn "Total ms: %f" (float l.ElapsedMilliseconds * 1e-3)
-//printfn "Total ms: %f" (Math.Log(3, 3))
-
-//printfn "Result: %d" (calculate (convert2func "(2+2)*2+(2+2)*2+(2+2*2)"))
 
 Console.ReadLine() |> ignore

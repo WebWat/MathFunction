@@ -17,7 +17,7 @@ type NodeTest() = class
     //[<Benchmark>]
     member this.Calculate() =
 
-        let result = calculateFunc node
+        let result = calculateFunc 0 node
         ()
 end
         

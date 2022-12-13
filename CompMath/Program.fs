@@ -1,30 +1,31 @@
 ﻿module Test
 
 open System
+open System.Diagnostics
 
 
 //printfn "%A" (derivative (fun x -> Math.Pow(x, x) * tan x * 1./log(x)) [|1..5|])
 
 type Node = 
     {
-    Value: Option<int>
+    Value: Option<float>
     Operation: string
     Left: Option<Node>
     Right: Option<Node>
     }
     override this.ToString() =
         let getData (value: Option<'a>) =
-            if value.IsSome then value.Value.ToString()
+            if value.IsSome then "Some(" + value.Value.ToString() + ")"
             else "None"
 
-        $"Value: [{getData(this.Value)}]; Operation: [{this.Operation}]; Left: [{getData(this.Left)}]; Right: [{getData(this.Right)}]"
+        $"{{Value = {getData(this.Value)}; Operation = \"{this.Operation}\"; Left = {getData(this.Left)}; Right = {getData(this.Right)};}}"
 
 let isNumber (number) =
-    let mutable temp = 0
-    Int32.TryParse(number.ToString(), &temp)
+    let mutable temp = 0.0
+    Double.TryParse(number.ToString(), &temp)
 
-let getBrackets (data: string) =
-    let lbr = Array.IndexOf(data.ToCharArray(), '(')
+let getBrackets (data: char[]) =
+    let lbr = Array.IndexOf(data, '(')
 
     let rec find total current be =
         if total = 0 && be then
@@ -36,61 +37,67 @@ let getBrackets (data: string) =
     if lbr = -1 then (-1, -1)
     else (lbr, find 0 0 false)
 
-let checkPos (left: int) (right: int) (symbol: char) (line: string) (current: int)  =
-    let rec op (current: int) : int =
+let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[])  =
+    let rec ifInCurrentBracket (current: int) : int =
         if (left, right) = (-1, -1) then 
-            Array.IndexOf(line.ToCharArray(), symbol)
+            Array.IndexOf(line, symbol)
         elif current = line.Length then 
             -1
         else
             if line[current] = symbol && (current > right || current < left) then
                 current
             else
-                op (current + 1)
-
-    let index = op 0
-
-    if right <> -1 && index > right + 1 then
-        let aff = line[right + 1..]
-        let (l, r) = getBrackets (aff)    
-        let offset = index - right - 1
-
-        if l < offset && offset < r then
+                ifInCurrentBracket (current + 1)
+    
+    let rec checkRightSide (line: char[]) (rLast: int) (rCurrent: int) ind =
+        let aff = line[rLast + 2..]
+        let (l, r) = getBrackets aff
+        
+        let offset = ind - rCurrent - 2
+        
+        if l = -1 || r = -1 || l > offset then
+            ind
+        elif offset < r then
             -1
         else
-            index 
+            checkRightSide aff r (r + rCurrent + 2) ind
+    
+    let index = ifInCurrentBracket 0
+
+    if right <> -1 && index > right + 1 then
+        checkRightSide line right right index
     else
         index
 
+ 
 let rec clearBrackets (line: string) =
-    let (l, r) = getBrackets line
-    if line[0] = '(' && 0 = l && line.Length - 1 = r then
+    let laz = lazy(getBrackets (line.ToCharArray()))
+
+    if line[0] = '(' && (laz.Force()) = (0, line.Length - 1) then
         clearBrackets line[1..line.Length - 2]
     else
         line 
 
 let rec breakLine (symbol: char) (line: string) =
-    let data = line
+    let charArray = line.ToCharArray()
 
-    let charArray = data.ToCharArray()
+    let (lbracket, rbracket) = getBrackets charArray
 
-    let (lbracket, rbracket) = getBrackets data
+    let index = checkValueInBrackets lbracket rbracket symbol charArray
 
-    let index = checkPos lbracket rbracket symbol data 0
- 
-    // Right multiply / divide
+    // Right: multiply & divide
     if index <> -1 && lbracket <> -1 && lbracket < index && symbol <> '+' && symbol <> '-' then
         let b = charArray[rbracket..rbracket + 1] 
 
         let leftS = Array.IndexOf(b, symbol)
         
         if leftS <> -1 then 
-            (data[1..rbracket - 1], data[rbracket + 2..])
+            (line[1..rbracket - 1], line[rbracket + 2..])
         else
             ("-", "-")
-    // Left operation
+    // Left: all others
     elif index <> -1 then
-        (data[..index - 1], data[index + 1..])
+        (line[..index - 1], line[index + 1..])
     else
         ("-", "-")
 
@@ -109,24 +116,31 @@ let convert2func (line: string) : Node =
             { Value = Some(int removed); Operation = ""; Right = None; Left = None }
         else
             let (lft, rght, i) = searchOperation (breakLine op[0] removed) removed 0
-            printfn "%s %c %s" lft op[i] rght
+            printfn "%s <%c> %s" lft op[i] rght
             { Value = None; Operation = string op[i]; Right = Some(convert(rght)); Left = Some(convert(lft)) }
 
     convert line
             
 
-let rec calculate (node: Node) : int =
+let rec calculateFunc (node: Node) : float =
     if node.Value.IsSome then 
         node.Value.Value
     else
         match node.Operation with
-        | "*" -> calculate node.Left.Value * calculate node.Right.Value
-        | "/" -> calculate node.Left.Value / calculate node.Right.Value
-        | "+" -> calculate node.Left.Value + calculate node.Right.Value
-        | "-" -> calculate node.Left.Value - calculate node.Right.Value
-        | _ -> failwith "Not working"
+        | "*" -> calculateFunc node.Left.Value * calculateFunc node.Right.Value
+        | "/" -> calculateFunc node.Left.Value / calculateFunc node.Right.Value
+        | "+" -> calculateFunc node.Left.Value + calculateFunc node.Right.Value
+        | "-" -> calculateFunc node.Left.Value - calculateFunc node.Right.Value
+        | _ -> failwith "Not available"
 
+let l = new Stopwatch()
 
-printfn "Result: %d" (calculate (convert2func "(6*2+9)/7"))
+l.Start()
+printfn "Result: %f" (calculateFunc (convert2func "(222+2)*(2-(2*2))/(2+2)+(222+2)*(2-2)/(2+2)+(222+2)*(2-2)/(2*2)-(222+(-2))*(2-2)/(2+2)"))
+l.Stop()
+
+printfn "Total ms: %f" (float l.ElapsedMilliseconds * 1e-3)
+
+//printfn "Result: %d" (calculate (convert2func "(2+2)*2+(2+2)*2+(2+2*2)"))
 
 Console.ReadLine() |> ignore

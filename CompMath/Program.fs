@@ -50,7 +50,7 @@ let checkPos (left: int) (right: int) (symbol: char) (line: string) (current: in
 
     let index = op 0
 
-    if index > right + 1 then
+    if right <> -1 && index > right + 1 then
         let aff = line[right + 1..]
         let (l, r) = getBrackets (aff)    
         let offset = index - right - 1
@@ -62,22 +62,22 @@ let checkPos (left: int) (right: int) (symbol: char) (line: string) (current: in
     else
         index
 
+let rec clearBrackets (line: string) =
+    let (l, r) = getBrackets line
+    if line[0] = '(' && 0 = l && line.Length - 1 = r then
+        clearBrackets line[1..line.Length - 2]
+    else
+        line 
 
-let breakLine (symbol: char) (line: string) =
-    let clearBracket (line: string) =
-        let (l, r) = getBrackets line
-        if line[0] = '(' && 0 = l && line.Length - 1 = r then
-            line[1..line.Length - 2]
-        else
-            line 
-
+let rec breakLine (symbol: char) (line: string) =
     let data = line
+
     let charArray = data.ToCharArray()
 
     let (lbracket, rbracket) = getBrackets data
 
-    let index = checkPos lbracket rbracket symbol line 0
-
+    let index = checkPos lbracket rbracket symbol data 0
+ 
     // Right multiply / divide
     if index <> -1 && lbracket <> -1 && lbracket < index && symbol <> '+' && symbol <> '-' then
         let b = charArray[rbracket..rbracket + 1] 
@@ -85,12 +85,12 @@ let breakLine (symbol: char) (line: string) =
         let leftS = Array.IndexOf(b, symbol)
         
         if leftS <> -1 then 
-            (data[1..rbracket - 1], clearBracket data[rbracket + 2..])
+            (data[1..rbracket - 1], data[rbracket + 2..])
         else
             ("-", "-")
     // Left operation
     elif index <> -1 then
-        (data[..index - 1], clearBracket data[index + 1..])
+        (data[..index - 1], data[index + 1..])
     else
         ("-", "-")
 
@@ -103,11 +103,13 @@ let convert2func (line: string) : Node =
         | (val1, val2) -> (val1, val2, i)
 
     let rec convert line =
-        if isNumber(line) then 
-            { Value = Some(int line); Operation = ""; Right = None; Left = None }
+        let removed = clearBrackets line
+
+        if isNumber(removed)  then 
+            { Value = Some(int removed); Operation = ""; Right = None; Left = None }
         else
-            let (lft, rght, i) = searchOperation (breakLine op[0] line) line 0
-            printfn "%s <-> %s" lft rght
+            let (lft, rght, i) = searchOperation (breakLine op[0] removed) removed 0
+            printfn "%s %c %s" lft op[i] rght
             { Value = None; Operation = string op[i]; Right = Some(convert(rght)); Left = Some(convert(lft)) }
 
     convert line
@@ -125,6 +127,6 @@ let rec calculate (node: Node) : int =
         | _ -> failwith "Not working"
 
 
-printfn "Result: %d" (calculate (convert2func "(2+2)*(2+3)*(2+4)"))
+printfn "Result: %d" (calculate (convert2func "(6*2+9)/7"))
 
 Console.ReadLine() |> ignore

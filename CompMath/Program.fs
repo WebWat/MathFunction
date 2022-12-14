@@ -7,7 +7,7 @@ open System.Text.RegularExpressions
 
 
 //printfn "%A" (derivative (fun x -> Math.Pow(x, x) * tan x * 1./log(x)) [|1..5|])
-
+    
 type Node = 
     {
     Value: Option<float>
@@ -20,14 +20,54 @@ type Node =
             if value.IsSome then "Some(" + value.Value.ToString() + ")"
             else "None"
 
-        $"{{Value = {getData(this.Value)}; Operation = \"{this.Operation}\"; Left = {getData(this.Left)}; Right = {getData(this.Right)};}}"
+        $"{{Value = {getData(this.Value)};Operation = \"{this.Operation}\";Left = {getData(this.Left)};Right = {getData(this.Right)};}}"
+
+    member private this.IsComplexOperation (op: string) =
+        Array.contains op [|"ln"; "lg"; "sin"; "cos"; "tg"; "ctg"; "sqrt"; "^"; "+"; "-"|]
+
+    member private this.Func2String (op: string) =
+        match this.Operation with
+        | "" -> string this.Value.Value
+        | "x" -> "x"
+        | "+" -> if this.IsComplexOperation op then 
+                    $"""{this.Left.Value.Func2String "+"} + {this.Right.Value.Func2String "+"}""" 
+                 else
+                    $"""({this.Left.Value.Func2String "+"} + {this.Right.Value.Func2String "+"})"""
+        | "-" -> if this.IsComplexOperation op then 
+                    $"""{this.Left.Value.Func2String "-"} - {this.Right.Value.Func2String "-"}""" 
+                 else
+                    $"""({this.Left.Value.Func2String "-"} - {this.Right.Value.Func2String "-"})"""
+        | "*" -> if (this.Left.Value.Operation = "x" && this.Right.Value.Operation <> "x" ||
+                     this.Left.Value.Operation <> "x" && this.Right.Value.Operation = "x") ||
+                    (this.Left.Value.Value.IsSome && this.Right.Value.Value.IsNone ||
+                     this.Left.Value.Value.IsNone && this.Right.Value.Value.IsSome) then
+                    if this.IsComplexOperation op || op = "*" then 
+                       $"""{this.Left.Value.Func2String "*"}{this.Right.Value.Func2String "*"}""" 
+                    else
+                       $"""({this.Left.Value.Func2String "*"}{this.Right.Value.Func2String "*"})"""
+                 else
+                     if this.IsComplexOperation op || op = "*" then 
+                        $"""{this.Left.Value.Func2String "*"} * {this.Right.Value.Func2String "*"}""" 
+                     else
+                        $"""({this.Left.Value.Func2String "*"} * {this.Right.Value.Func2String "*"})"""
+        | "/" -> if this.IsComplexOperation op then 
+                    $"""{this.Left.Value.Func2String "/"} / {this.Right.Value.Func2String "/"}""" 
+                 else
+                    $"""({this.Left.Value.Func2String "/"} / {this.Right.Value.Func2String "/"})"""
+        | "^"    -> $"""({this.Left.Value.Func2String "^"})^({this.Right.Value.Func2String "^"})"""
+        | "|"    -> $"""|{this.Right.Value.Func2String "|"}|"""
+        | "ln"   -> $"""ln({this.Right.Value.Func2String "ln"})"""
+        | "lg"   -> $"""lg({this.Right.Value.Func2String "lg"})"""
+        | "sin"  -> $"""sin({this.Right.Value.Func2String "sin"})"""
+        | "cos"  -> $"""cos({this.Right.Value.Func2String "cos"})"""
+        | "sqrt" -> $"""sqrt({this.Right.Value.Func2String "sqrt"})"""
+        | "tg"   -> $"""tg({this.Right.Value.Func2String "tg"})"""
+        | "ctg"  -> $"""ctg({this.Right.Value.Func2String "ctg"})"""
+        | _ -> failwith "Not working"
 
     override this.ToString() =
-        let getData (value: Option<'a>) =
-            if value.IsSome then "Some(" + value.Value.ToString() + ")"
-            else "None"
-
-        $"{{Value = {getData(this.Value)}; Operation = \"{this.Operation}\"; Left = {getData(this.Left)}; Right = {getData(this.Right)};}}"
+        let result = this.Func2String(this.Operation)
+        result
 
 let isNumber (number) =
     let mutable temp = 0.0
@@ -82,7 +122,6 @@ let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[]) 
         checkRightSide line right right index
     else
         index
-
  
 let rec clearBrackets (line: char[]) =
     let args = getBrackets line
@@ -129,8 +168,8 @@ let convert2func (line: string) : Node =
 
         match removed with 
         | "x" ->  { Value = None;          Operation = "x"; Left = None; Right = None; }
-        | "pi" -> { Value = Some(Math.PI); Operation = "x"; Left = None; Right = None; }
-        | "e" ->  { Value = Some(Math.E);  Operation = "x"; Left = None; Right = None; }
+        | "pi" -> { Value = Some(Math.PI); Operation = ""; Left = None; Right = None; }
+        | "e" ->  { Value = Some(Math.E);  Operation = ""; Left = None; Right = None; }
         | val1 when isNumber(val1)     -> { Value = Some(float val1); Operation = ""; Right = None; Left = None }
         | val1 when val1.StartsWith("|") && val1[val1.Length - 1] = '|' -> { Value = None; Operation = "|"; Right = Some(convert(val1[1..val1.Length - 2])); Left = None; } // Only 1 deep
         | val1 when r = val1.Length - 1 && val1.StartsWith("ln")  -> { Value = None; Operation = "ln";   Right = Some(convert(val1[3..r - 1])); Left = None; }
@@ -138,7 +177,7 @@ let convert2func (line: string) : Node =
         | val1 when r = val1.Length - 1 && val1.StartsWith("tg")  -> { Value = None; Operation = "tg";   Right = Some(convert(val1[3..r - 1])); Left = None; }
         | val1 when r = val1.Length - 1 && val1.StartsWith("sin") -> { Value = None; Operation = "sin";  Right = Some(convert(val1[4..r - 1])); Left = None; }
         | val1 when r = val1.Length - 1 && val1.StartsWith("cos") -> { Value = None; Operation = "cos";  Right = Some(convert(val1[4..r - 1])); Left = None; }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("ctg")  -> { Value = None; Operation = "ctg"; Right = Some(convert(val1[4..r - 1])); Left = None; }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("ctg") -> { Value = None; Operation = "ctg";  Right = Some(convert(val1[4..r - 1])); Left = None; }
         | val1 when r = val1.Length - 1 && val1.StartsWith("sqrt")-> { Value = None; Operation = "sqrt"; Right = Some(convert(val1[5..r - 1])); Left = None; }
         | _ ->  let (lft, rght, i) = searchOperation (breakLine (l, r) operations[0] removed) removed (l, r) 0
                 { Value = None; Operation = string operations[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
@@ -178,7 +217,7 @@ while true do
 
     try
         let func = convert2func text
-        printfn "%s" (func.ToRecord())
+        printfn "String result: %s" (func.ToString())
         Console.ReadLine() |> ignore
         for i in -3.0..0.5..3.0 do
             printfn "y( %f ) = %f" i (calculateFunc i func)

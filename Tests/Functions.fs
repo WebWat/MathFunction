@@ -1,7 +1,7 @@
-﻿module Node
+﻿module Functions
 
 open System
-open Test
+open Function
 open Xunit
 
 

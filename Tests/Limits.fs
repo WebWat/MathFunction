@@ -1,7 +1,7 @@
 module Limits
 
 open System
-open Main
+open Limit
 open Xunit
 
 

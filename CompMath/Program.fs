@@ -1,24 +1,28 @@
 ﻿open System
 open System.Diagnostics
 open Function
+open Limit
 
 while true do
     let l = new Stopwatch()
 
-    //printf "\nInput function: "
+    printf "\nInput function: "
 
-    let text = "(-1)*(sin(2*x)-2*sin(pi))/(x*ln(cos(5*x)))"
+    let text = Console.ReadLine()
 
     l.Start()
 
     try
-        let func = convert2func text
+        let func = convertToFunc text
         printfn "String result: %s" (func.ToString())
-        Console.ReadLine() |> ignore
-        for i in -3.0..0.5..3.0 do
-            printfn "y( %f ) = %f" i (calculateFunc i func)
+
+        for i in -5.0..0.5..5.0 do
+            try
+                printfn "y(%f) = %f | y'(%f) = %f" i (calculateFunc func i) i (derivative func i)
+            with
+                | NotExist -> printfn "Not exist!"
     with
-    | _ -> printfn "Incorrect input!"
+    | ex -> printfn "Incorrect input"
 
     l.Stop()
 

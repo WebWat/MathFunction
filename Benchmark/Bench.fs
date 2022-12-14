@@ -12,11 +12,11 @@ type NodeTest() = class
 
     //[<Benchmark>]
     member this.Convert() =
-         convert2func (this.Expr())
+         convertToFunc (this.Expr())
 
     [<Benchmark>]
     member this.Calculate() =
-        let result = calculateFunc 0.05 node
+        let result = calculateFunc node 0.05
         ()
 end
         

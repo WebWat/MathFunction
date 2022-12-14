@@ -19,7 +19,7 @@ type Node =
         $"{{Value = {getData(this.Value)};Operation = \"{this.Operation}\";Left = {getData(this.Left)};Right = {getData(this.Right)};}}"
 
     member private this.IsComplexOperation (op: string) =
-        Array.contains op [|"ln"; "lg"; "sin"; "cos"; "tg"; "ctg"; "sqrt"; "^"; "+"; "-"|]
+        Array.contains op [|"ln"; "lg"; "sin"; "cos"; "tg"; "ctg"; "sqrt"; "^"; "+"; "-"; "|"|]
 
     member private this.Func2String (op: string) =
         match this.Operation with
@@ -138,7 +138,10 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
     else
         (line[..index - 1], line[index + 1..])
 
-let convert2func (line: string) : Node =
+let preProcessing (line: string) : string =
+    ""
+
+let convertToFunc (line: string) : Node =
     let operations = [|'+';'-';'*';'/';'^'|]
 
     //  Looping through all operations
@@ -158,7 +161,7 @@ let convert2func (line: string) : Node =
         | "pi" -> { Value = Some(Math.PI); Operation = ""; Left = None; Right = None; }
         | "e" ->  { Value = Some(Math.E);  Operation = ""; Left = None; Right = None; }
         | val1 when isNumber(val1)     -> { Value = Some(float val1); Operation = ""; Right = None; Left = None }
-        | val1 when val1.StartsWith("|") && val1[val1.Length - 1] = '|' -> { Value = None; Operation = "|"; Right = Some(convert(val1[1..val1.Length - 2])); Left = None; } // Only 1 deep
+        | val1 when val1.StartsWith("|") && val1[val1.Length - 1] = '|' -> { Value = None; Operation = "|"; Right = Some(convert(val1[1..val1.Length - 2])); Left = None; }
         | val1 when r = val1.Length - 1 && val1.StartsWith("ln")  -> { Value = None; Operation = "ln";   Right = Some(convert(val1[3..r - 1])); Left = None; }
         | val1 when r = val1.Length - 1 && val1.StartsWith("lg")  -> { Value = None; Operation = "lg";   Right = Some(convert(val1[3..r - 1])); Left = None; }        
         | val1 when r = val1.Length - 1 && val1.StartsWith("tg")  -> { Value = None; Operation = "tg";   Right = Some(convert(val1[3..r - 1])); Left = None; }
@@ -172,23 +175,29 @@ let convert2func (line: string) : Node =
     convert line
             
 
-let rec calculateFunc (x: float) (node: Node) : float =
+let rec calculateFunc (node: Node) (x: float) : float =
     if node.Value.IsSome then 
         node.Value.Value
     else
         match node.Operation with
         | "x" -> x
-        | "ln"   -> Math.Log(calculateFunc x node.Right.Value)
-        | "lg"   -> Math.Log10(calculateFunc x node.Right.Value)
-        | "sin"  -> Math.Sin(calculateFunc x node.Right.Value)
-        | "cos"  -> Math.Cos(calculateFunc x node.Right.Value)
-        | "sqrt" -> Math.Sqrt(calculateFunc x node.Right.Value)
-        | "tg"   -> Math.Tan(calculateFunc x node.Right.Value)
-        | "ctg"  -> 1. / Math.Tan(calculateFunc x node.Right.Value)
-        | "|"    -> Math.Abs(calculateFunc x node.Right.Value)
-        | "^"    -> Math.Pow(calculateFunc x node.Left.Value, calculateFunc x node.Right.Value)
-        | "*"    -> calculateFunc x node.Left.Value * calculateFunc x node.Right.Value
-        | "/"    -> calculateFunc x node.Left.Value / calculateFunc x node.Right.Value
-        | "+"    -> calculateFunc x node.Left.Value + calculateFunc x node.Right.Value
-        | "-"    -> calculateFunc x node.Left.Value - calculateFunc x node.Right.Value
+        | "ln"   -> Math.Log(calculateFunc node.Right.Value x)
+        | "lg"   -> Math.Log10(calculateFunc node.Right.Value x)
+        | "sin"  -> Math.Sin(calculateFunc node.Right.Value x)
+        | "cos"  -> Math.Cos(calculateFunc node.Right.Value x)
+        | "sqrt" -> Math.Sqrt(calculateFunc node.Right.Value x)
+        | "tg"   -> Math.Tan(calculateFunc node.Right.Value x)
+        | "ctg"  -> 1. / Math.Tan(calculateFunc node.Right.Value x)
+        | "|"    -> Math.Abs(calculateFunc node.Right.Value x)
+        | "^"    -> Math.Pow(calculateFunc node.Left.Value x, calculateFunc node.Right.Value x)
+        | "*"    -> calculateFunc node.Left.Value x * calculateFunc node.Right.Value x
+        | "/"    -> calculateFunc node.Left.Value x / calculateFunc node.Right.Value x
+        | "+"    -> calculateFunc node.Left.Value x + calculateFunc node.Right.Value x
+        | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
         | _ -> failwith "Not available"
+(*
+    pre-processing
+    1. -1 => (-1)
+    2. |x| => (|x|)
+    3. 1 + 1 => 1+1
+*)

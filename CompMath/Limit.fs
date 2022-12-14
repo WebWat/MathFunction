@@ -1,6 +1,7 @@
 ﻿module Limit
 
 open System
+open Function
 
 exception NotExist
 
@@ -29,7 +30,7 @@ let limit (func: float -> float) (x: float) (accuracy: int) (position: Position)
             // If there is no function
             if Double.IsNaN diff then raise (NotExist)
 
-            printfn "\nStart => %.20f\nEnd => %.20f\nDiff => %.20f\nEps  => %.20f\nldiff => %.20f" first second diff eps ldiff
+            //printfn "\nStart => %.20f\nEnd => %.20f\nDiff => %.20f\nEps  => %.20f\nldiff => %.20f" first second diff eps ldiff
             
             // If the value of the function does not change
             if diff = 0 then second
@@ -49,11 +50,6 @@ let limit (func: float -> float) (x: float) (accuracy: int) (position: Position)
     else
         result
 
-let derivative (func: float -> float) (points: float[]) =
-    Array.map (fun item ->
-        try
-            limit (fun x -> ((func (item + x) - func item)/ x)) 0 3 Position.Left
-        with
-        | _ -> -1
-    ) points
+let derivative (func: Node) (point: float) =
+    limit (fun x -> ((calculateFunc func (point + x) - calculateFunc func point)/ x)) 0 6 Position.Left
 

@@ -114,24 +114,28 @@ let convert2func (line: string) : Node =
         | ("-", "-") -> searchOperation (breakLine brackets (operations[i + 1]) line) line brackets (i + 1)
         | (val1, val2) -> (val1, val2, i)
 
-    let rec convert (line: string) = 
+    let rec convert (line: string) =
+        //printfn "%s" line
         let charArray = line.ToCharArray()
         let (removed, (l, r)) = clearBrackets charArray
 
         match removed with 
-        | "x" ->  { Value = None;          Operation = "x"; Right = None; Left = None }
-        | "pi" -> { Value = Some(Math.PI); Operation = "x"; Right = None; Left = None }
-        | "e" ->  { Value = Some(Math.E);  Operation = "x"; Right = None; Left = None }
-        | val1 when isNumber(val1)     -> { Value = Some(float val1); Operation = ""; Right = None; Left = None } //!
-        | val1 when r = val1.Length - 1 && val1.StartsWith("ln") ->  { Value = None; Operation = "ln";  Left = None;  Right = Some(convert(val1[3..r - 1])) }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("lg")  -> { Value = None; Operation = "lg";  Left = None;  Right = Some(convert(val1[3..r - 1])) }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("log") -> { Value = None; Operation = "log" + string val1[3]; Left = None; Right = Some(convert(val1[5..r - 1])) }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("sin") -> { Value = None; Operation = "sin"; Left = None;  Right = Some(convert(val1[4..r - 1])) }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("cos") -> { Value = None; Operation = "cos"; Left = None;  Right = Some(convert(val1[4..r - 1])) }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("tg")  -> { Value = None; Operation =  "tg"; Left = None;  Right = Some(convert(val1[3..r - 1])) }
+        | "x" ->  { Value = None;          Operation = "x"; Left = None; Right = None; }
+        | "pi" -> { Value = Some(Math.PI); Operation = "x"; Left = None; Right = None; }
+        | "e" ->  { Value = Some(Math.E);  Operation = "x"; Left = None; Right = None; }
+        | val1 when isNumber(val1)     -> { Value = Some(float val1); Operation = ""; Right = None; Left = None }
+        | val1 when val1.StartsWith("|") && val1[val1.Length - 1] = '|' -> { Value = None; Operation = "|"; Right = Some(convert(val1[1..val1.Length - 2])); Left = None; } // Only 1 deep
+        | val1 when r = val1.Length - 1 && val1.StartsWith("ln")  -> { Value = None; Operation = "ln";   Right = Some(convert(val1[3..r - 1])); Left = None; }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("lg")  -> { Value = None; Operation = "lg";   Right = Some(convert(val1[3..r - 1])); Left = None; }        
+        | val1 when r = val1.Length - 1 && val1.StartsWith("tg")  -> { Value = None; Operation = "tg";   Right = Some(convert(val1[3..r - 1])); Left = None; }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("sin") -> { Value = None; Operation = "sin";  Right = Some(convert(val1[4..r - 1])); Left = None; }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("cos") -> { Value = None; Operation = "cos";  Right = Some(convert(val1[4..r - 1])); Left = None; }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("ctg")  -> { Value = None; Operation = "ctg"; Right = Some(convert(val1[4..r - 1])); Left = None; }
+        | val1 when r = val1.Length - 1 && val1.StartsWith("sqrt")-> { Value = None; Operation = "sqrt"; Right = Some(convert(val1[5..r - 1])); Left = None; }
+        //| val1 when r = val1.Length - 1 && val1.StartsWith("log") -> { Value = None; Operation = "log" + string val1[3]; Right = Some(convert(val1[5..r - 1])); Left = None; }
         | _ ->  let (lft, rght, i) = searchOperation (breakLine (l, r) operations[0] removed) removed (l, r) 0
                 //printfn "%s <%c> %s" lft operations[i] rght
-                { Value = None; Operation = string operations[i]; Right = Some(convert(rght)); Left = Some(convert(lft)) }
+                { Value = None; Operation = string operations[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
 
     convert line
             
@@ -142,29 +146,48 @@ let rec calculateFunc (x: float) (node: Node) : float =
     else
         match node.Operation with
         | "x" -> x
-        | "ln"  -> Math.Log(calculateFunc x node.Right.Value)
-        | "lg"  -> Math.Log10(calculateFunc x node.Right.Value)
-        | "sin" -> Math.Sin(calculateFunc x node.Right.Value)
-        | "cos" -> Math.Cos(calculateFunc x node.Right.Value)
-        | "tg"  -> Math.Tan(calculateFunc x node.Right.Value)
-        | "^"   -> Math.Pow(calculateFunc x node.Left.Value, calculateFunc x node.Right.Value)
-        | "*"   -> calculateFunc x node.Left.Value * calculateFunc x node.Right.Value
-        | "/"   -> calculateFunc x node.Left.Value / calculateFunc x node.Right.Value
-        | "+"   -> calculateFunc x node.Left.Value + calculateFunc x node.Right.Value
-        | "-"   -> calculateFunc x node.Left.Value - calculateFunc x node.Right.Value
-        | val1 when val1.StartsWith("log") -> Math.Log(calculateFunc x node.Right.Value, float (string val1[3])) // only 1-9!!!
+        | "ln"   -> Math.Log(calculateFunc x node.Right.Value)
+        | "lg"   -> Math.Log10(calculateFunc x node.Right.Value)
+        | "sin"  -> Math.Sin(calculateFunc x node.Right.Value)
+        | "cos"  -> Math.Cos(calculateFunc x node.Right.Value)
+        | "sqrt" -> Math.Sqrt(calculateFunc x node.Right.Value)
+        | "tg"   -> Math.Tan(calculateFunc x node.Right.Value)
+        | "ctg"  -> 1. / Math.Tan(calculateFunc x node.Right.Value)
+        | "|"    -> Math.Abs(calculateFunc x node.Right.Value)
+        | "^"    -> Math.Pow(calculateFunc x node.Left.Value, calculateFunc x node.Right.Value)
+        | "*"    -> calculateFunc x node.Left.Value * calculateFunc x node.Right.Value
+        | "/"    -> calculateFunc x node.Left.Value / calculateFunc x node.Right.Value
+        | "+"    -> calculateFunc x node.Left.Value + calculateFunc x node.Right.Value
+        | "-"    -> calculateFunc x node.Left.Value - calculateFunc x node.Right.Value
+        //| val1 when val1.StartsWith("log") -> Math.Log(calculateFunc x node.Right.Value, float (string val1[3]))
         | _ -> failwith "Not available"
 
-let l = new Stopwatch()
+while true do
+    let l = new Stopwatch()
 
-l.Start()
-let func = convert2func "(-1)*(sin(2*x)-2*sin(pi))/(x*ln(cos(5*x)))"
+    printf "\nInput function: "
 
-for i in -0.3..0.05..0.3 do
-    printfn "y( %f ) = %f | %f" i (calculateFunc i func) (-(sin(2.* i )-2.*sin(Math.PI))/(i * log(cos(5.* i))))
+    let text = Console.ReadLine() 
 
-l.Stop()
+    l.Start()
 
-printfn "Total ms: %f" (float l.ElapsedMilliseconds * 1e-3)
+    try
+        let func = convert2func text
+
+        for i in -3.0..0.5..3.0 do
+            printfn "y( %f ) = %f" i (calculateFunc i func)
+    with
+    | _ -> printfn "Incorrect input!"
+
+    l.Stop()
+
+    printfn "Total ms: %f" (float l.ElapsedMilliseconds * 1e-3)
 
 Console.ReadLine() |> ignore
+
+(*
+    pre-processing
+    1. -1 => (-1)
+    2. |x| => (|x|)
+    3. 1 + 1 => 1+1
+*)

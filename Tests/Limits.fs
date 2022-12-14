@@ -1,4 +1,4 @@
-module Tests
+module Limits
 
 open System
 open Main
@@ -10,7 +10,7 @@ let signifNumbers count (value: float) =
     Double.Parse str[..count]
 
 [<Fact>]
-let ``Simple limits`` () =
+let ``Simple`` () =
     Assert.Equal(4., (limit (fun x -> x * x) 2 10 Position.Left))
     Assert.Equal(1., (limit (fun x -> cos x) 0 10 Position.Left))
 
@@ -18,7 +18,7 @@ let ``Simple limits`` () =
     Assert.Equal(0., (limit (fun x -> tan x) 0 10 Position.Left))
 
 [<Fact>]
-let ``Left & right limits`` () =
+let ``Left & right`` () =
     Assert.Equal(-infinity, (limit (fun x -> 1.0 / x) 0 10 Position.Left))
     Assert.Equal(infinity, (limit (fun x -> 1.0 / x) 0 10 Position.Right))
 
@@ -33,7 +33,7 @@ let ``Not exist exception`` () =
     Assert.Throws<NotExist>(fun _ -> limit (fun x -> (sin(2.0 * x) - 2.0 * sin x)/(x * log(cos(5.0 * x)))) 3 6 Position.Left |> ignore)
 
 [<Fact>]
-let ``Complex limits`` () =
+let ``Complex`` () =
     let l1 = limit (fun x -> (sin(2.0 * x) - 2.0 * sin x)/(x * log(cos(5.0 * x)))) 0 6 Position.Left
     let r1 = limit (fun x -> (sin(2.0 * x) - 2.0 * sin x)/(x * log(cos(5.0 * x)))) 0 6 Position.Right
     Assert.Equal(0.079999, signifNumbers 7 l1)

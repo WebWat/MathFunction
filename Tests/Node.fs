@@ -22,10 +22,10 @@ let ``Complex calculations`` () =
     
     x <- 0.5
     Assert.Equal(((1./tan x *(1.-cos(3.*x) * cos(3.*x)))/(x*x+5.*x)), 
-                 (calculateFunc x (convert2func "(ctg(x)*(1-cos(3*x)^2))/(x^2+5*x)")))
+                 (calculateFunc x (convert2func "ctg(x)*(1-cos(3*x)^2)/(x^2+5*x)")))
     
     x <- 2
-    Assert.Equal(((1.-cos(x))/(sqrt(x+1.)-1.)), (calculateFunc x (convert2func "(1-cos(x))/(sqrt(x+1))")))
+    Assert.Equal(((1.-cos(x))/(sqrt(x+1.)-1.)), (calculateFunc x (convert2func "(1-cos(x))/(sqrt(x+1)-1)")))
 
 [<Fact>]
 let ``Degree and Root`` () =

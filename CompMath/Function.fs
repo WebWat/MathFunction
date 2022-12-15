@@ -2,6 +2,7 @@
 
 open System
 open System.Globalization
+open System.Text.RegularExpressions
 
 type Node = 
     {
@@ -62,17 +63,38 @@ let isNumber (number) =
     Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
 
 let getBrackets (line: char[]) =
-    let leftBracket = Array.IndexOf(line, '(')
+    // refactoring!!
+    let getClose leftBracket leftModule =
+        if leftModule = -1 && leftBracket <> -1 || 
+           (leftBracket <> -1 && leftModule <> -1 && leftBracket < leftModule) then 
+           (leftBracket, '(')
+        elif leftBracket = -1 && leftModule <> -1 || 
+             (leftModule <> -1 && leftBracket <> -1 && leftModule < leftBracket) then 
+             (leftModule, '|')
+        else (-1, '-')
 
-    let rec find total current be =
-        if total = 0 && be then
+    let rec findBracket total current =
+        if total = 0 then current - 1
+        elif line[current] = '(' then findBracket (total + 1) (current + 1)
+        elif line[current] = ')' then findBracket (total - 1) (current + 1)
+        else findBracket total (current + 1)
+
+    let rec findModule total current notClosed =
+        if total = 0 then
             current - 1
-        elif line[current] = '(' then find (total + 1) (current + 1) true
-        elif line[current] = ')' then find (total - 1) (current + 1) true
-        else find total (current + 1) be
+        elif line[current] = '|' then
+            if notClosed && Regex.IsMatch(string line[current - 1], @"\W") then 
+                findModule (total + 1) (current + 1) true
+            else
+                findModule (total - 1) (current + 1) false
+        else findModule total (current + 1) true
 
-    if leftBracket = -1 then (-1, -1)
-    else (leftBracket, find 0 0 false)
+    let (left, operation) = getClose (Array.IndexOf(line, '(')) (Array.IndexOf(line, '|'))
+
+    match operation with
+    | '(' -> (left, findBracket 1 (left + 1))
+    | '|' -> (left, findModule 1 (left + 1) true)
+    | _ -> (-1, -1)
 
 let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[])  =
     let rec lookOutsideBracket (current: int) : int =
@@ -138,8 +160,23 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
     else
         (line[..index - 1], line[index + 1..])
 
+(*
+    pre-processing
+    1. -1 => (-1)
+    2. |x| => (|x|)
+    3. 1 + 1 => 1+1
+*)
 let preProcessing (line: string) : string =
-    ""
+    let matchesNegative = Regex.Matches(line, @"\D-[0-9]*(\.[0-9]*)?")
+
+    let rec addBrackets2NegativeNum (line: string) (i: int) (matches: MatchCollection) = 
+        if i = matches.Count then
+            line
+        else
+            let _match = matches[i].Value[1..matches[i].Value.Length - 1]
+            addBrackets2NegativeNum (line.Replace(_match, "(" + _match + ")")) (i + 1) matches
+
+    (addBrackets2NegativeNum line 0 matchesNegative).Replace(" ", "")
 
 let convertToFunc (line: string) : Node =
     let operations = [|'+';'-';'*';'/';'^'|]
@@ -152,7 +189,7 @@ let convertToFunc (line: string) : Node =
 
     let rec convert (line: string) =
         let charArray = line.ToCharArray()
-
+        printfn "%s" line
         // Removing extra brackets
         let (removed, (l, r)) = clearBrackets charArray
 
@@ -160,17 +197,21 @@ let convertToFunc (line: string) : Node =
         | "x" ->  { Value = None;          Operation = "x"; Left = None; Right = None; }
         | "pi" -> { Value = Some(Math.PI); Operation = ""; Left = None; Right = None; }
         | "e" ->  { Value = Some(Math.E);  Operation = ""; Left = None; Right = None; }
-        | val1 when isNumber(val1)     -> { Value = Some(float val1); Operation = ""; Right = None; Left = None }
-        | val1 when val1.StartsWith("|") && val1[val1.Length - 1] = '|' -> { Value = None; Operation = "|"; Right = Some(convert(val1[1..val1.Length - 2])); Left = None; }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("ln")  -> { Value = None; Operation = "ln";   Right = Some(convert(val1[3..r - 1])); Left = None; }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("lg")  -> { Value = None; Operation = "lg";   Right = Some(convert(val1[3..r - 1])); Left = None; }        
-        | val1 when r = val1.Length - 1 && val1.StartsWith("tg")  -> { Value = None; Operation = "tg";   Right = Some(convert(val1[3..r - 1])); Left = None; }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("sin") -> { Value = None; Operation = "sin";  Right = Some(convert(val1[4..r - 1])); Left = None; }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("cos") -> { Value = None; Operation = "cos";  Right = Some(convert(val1[4..r - 1])); Left = None; }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("ctg") -> { Value = None; Operation = "ctg";  Right = Some(convert(val1[4..r - 1])); Left = None; }
-        | val1 when r = val1.Length - 1 && val1.StartsWith("sqrt")-> { Value = None; Operation = "sqrt"; Right = Some(convert(val1[5..r - 1])); Left = None; }
-        | _ ->  let (lft, rght, i) = searchOperation (breakLine (l, r) operations[0] removed) removed (l, r) 0
-                { Value = None; Operation = string operations[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
+        | val1 when isNumber(val1) -> { Value = Some(float val1); Operation = ""; Right = None; Left = None }
+        | val1 when r = val1.Length - 1 -> 
+                match val1 with
+                | op when op.StartsWith("|")  ->  { Value = None; Operation = "|";    Right = Some(convert(op[1..val1.Length - 2])); Left = None; }
+                | op when op.StartsWith("ln")  -> { Value = None; Operation = "ln";   Right = Some(convert(op[3..r - 1])); Left = None; }
+                | op when op.StartsWith("lg")  -> { Value = None; Operation = "lg";   Right = Some(convert(op[3..r - 1])); Left = None; }        
+                | op when op.StartsWith("tg")  -> { Value = None; Operation = "tg";   Right = Some(convert(op[3..r - 1])); Left = None; }
+                | op when op.StartsWith("sin") -> { Value = None; Operation = "sin";  Right = Some(convert(op[4..r - 1])); Left = None; }
+                | op when op.StartsWith("cos") -> { Value = None; Operation = "cos";  Right = Some(convert(op[4..r - 1])); Left = None; }
+                | op when op.StartsWith("ctg") -> { Value = None; Operation = "ctg";  Right = Some(convert(op[4..r - 1])); Left = None; }
+                | op when op.StartsWith("sqrt")-> { Value = None; Operation = "sqrt"; Right = Some(convert(op[5..r - 1])); Left = None; }
+                | _ -> let (lft, rght, i) = searchOperation (breakLine (l, r) operations[0] removed) removed (l, r) 0
+                       { Value = None; Operation = string operations[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
+        | _ -> let (lft, rght, i) = searchOperation (breakLine (l, r) operations[0] removed) removed (l, r) 0
+               { Value = None; Operation = string operations[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
 
     convert line
             
@@ -195,9 +236,3 @@ let rec calculateFunc (node: Node) (x: float) : float =
         | "+"    -> calculateFunc node.Left.Value x + calculateFunc node.Right.Value x
         | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
         | _ -> failwith "Not available"
-(*
-    pre-processing
-    1. -1 => (-1)
-    2. |x| => (|x|)
-    3. 1 + 1 => 1+1
-*)

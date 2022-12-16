@@ -10,11 +10,11 @@ type NodeTest() = class
 
     member private this.Expr () = "(-1)*(sin(2*x)-2*sin(x))/(x*ln(cos(5*x)))"
 
-    //[<Benchmark>]
+    [<Benchmark>]
     member this.Convert() =
          convertToFunc (this.Expr())
 
-    [<Benchmark>]
+    //[<Benchmark>]
     member this.Calculate() =
         let result = calculateFunc node 0.05
         ()

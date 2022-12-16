@@ -54,8 +54,5 @@ let ``Module`` () =
     Assert.Equal(14., (calculateFunc (convertToFunc "|-4+2+2*(-2)*2|+|-2|^2") 0))
 
 //[<Fact>]
-//let ``Clear brackets tests`` () =
-//    Assert.Equal("2+2", (clearBrackets "2+2"))
-//    Assert.Equal("2+2", (clearBrackets "(2+2)"))
-//    Assert.Equal("2+2", (clearBrackets "(((2+2)))"))
-//    Assert.Equal("(2+2)*(2+2)", (clearBrackets "(2+2)*(2+2)"))
+//let ``Preprocessing tests`` () =
+//    Assert.Equal("(x+2)/((-2)-3)", preProcessing "(x + 2)/(-2-3)")

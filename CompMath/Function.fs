@@ -65,11 +65,11 @@ let isNumber (number) =
 let getBrackets (line: char[]) =
     // refactoring!!
     let getClose leftBracket leftModule =
-        if leftModule = -1 && leftBracket <> -1 || 
-           (leftBracket <> -1 && leftModule <> -1 && leftBracket < leftModule) then 
+        if leftBracket <> -1 && (leftModule = -1 || 
+           leftModule <> -1 && leftBracket < leftModule) then 
            (leftBracket, '(')
-        elif leftBracket = -1 && leftModule <> -1 || 
-             (leftModule <> -1 && leftBracket <> -1 && leftModule < leftBracket) then 
+        elif leftModule <> -1 && (leftBracket = -1  || 
+             leftBracket <> -1 && leftModule < leftBracket) then 
              (leftModule, '|')
         else (-1, '-')
 
@@ -133,12 +133,12 @@ let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[]) 
         index
  
 let rec clearBrackets (line: char[]) =
-    let args = getBrackets line
+    let args = lazy(getBrackets line)
 
-    if line[0] = '(' && args = (0, line.Length - 1) then
+    if line[0] = '(' && args.Force() = (0, line.Length - 1) then
         clearBrackets line[1..line.Length - 2]
     else
-        (new string(line), args)
+        (new string(line), args.Force())
 
 // Splitting a string by operations
 let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
@@ -166,17 +166,9 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
     2. |x| => (|x|)
     3. 1 + 1 => 1+1
 *)
-let preProcessing (line: string) : string =
-    let matchesNegative = Regex.Matches(line, @"\D-[0-9]*(\.[0-9]*)?")
+//let preProcessing (line: string) : string =
 
-    let rec addBrackets2NegativeNum (line: string) (i: int) (matches: MatchCollection) = 
-        if i = matches.Count then
-            line
-        else
-            let _match = matches[i].Value[1..matches[i].Value.Length - 1]
-            addBrackets2NegativeNum (line.Replace(_match, "(" + _match + ")")) (i + 1) matches
-
-    (addBrackets2NegativeNum line 0 matchesNegative).Replace(" ", "")
+//    addBrackets2NegativeNum1 ((addBrackets2NegativeNum2 line 0 matchesNegative1).Replace(" ", "")) 0 matchesNegative2
 
 let convertToFunc (line: string) : Node =
     let operations = [|'+';'-';'*';'/';'^'|]
@@ -187,11 +179,19 @@ let convertToFunc (line: string) : Node =
         | ("-", "-") -> searchOperation (breakLine brackets (operations[i + 1]) line) line brackets (i + 1)
         | (val1, val2) -> (val1, val2, i)
 
+    let rec findMatch (matches: MatchCollection) (i: int) =
+        if matches[i].Value.Length <> 0 then
+            matches[i].Value
+        else
+            findMatch matches (i + 1)
+            
     let rec convert (line: string) =
         let charArray = line.ToCharArray()
-        printfn "%s" line
+
         // Removing extra brackets
         let (removed, (l, r)) = clearBrackets charArray
+
+        printfn "l: %d r: %d => %s" l r removed
 
         match removed with 
         | "x" ->  { Value = None;          Operation = "x"; Left = None; Right = None; }

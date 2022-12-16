@@ -27,13 +27,13 @@ type Node =
         | "" -> string this.Value.Value
         | "x" -> "x"
         | "+" -> if this.IsComplexOperation op then 
-                    $"""{this.Left.Value.Func2String "+"} + {this.Right.Value.Func2String "+"}""" 
+                    $"""{this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"}""" 
                  else
-                    $"""({this.Left.Value.Func2String "+"} + {this.Right.Value.Func2String "+"})"""
+                    $"""({this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"})"""
         | "-" -> if this.IsComplexOperation op then 
-                    $"""{this.Left.Value.Func2String "-"} - {this.Right.Value.Func2String "-"}""" 
+                    $"""{this.Left.Value.Func2String "-"}-{this.Right.Value.Func2String "-"}""" 
                  else
-                    $"""({this.Left.Value.Func2String "-"} - {this.Right.Value.Func2String "-"})"""
+                    $"""({this.Left.Value.Func2String "-"}-{this.Right.Value.Func2String "-"})"""
         | "*" -> if this.IsComplexOperation op || op = "*" then 
                     $"""{this.Left.Value.Func2String "*"}*{this.Right.Value.Func2String "*"}""" 
                  else
@@ -126,19 +126,24 @@ let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[]) 
     
     let index = lookOutsideBracket 0
 
-    // If found beyond expression
+    // If found operarion beyond expression
     if right <> -1 && index > right + 1 then
         checkRightSide line right right index
+    // If negative number in start
+    elif index = 0 && symbol = '-' then
+        let result = checkRightSide line right right (Array.IndexOf(line[1..line.Length - 1], '-'))
+        if result = -1 then result
+        else result + 1
     else
         index
  
 let rec clearBrackets (line: char[]) =
-    let args = lazy(getBrackets line)
+    let args = getBrackets line
 
-    if line[0] = '(' && args.Force() = (0, line.Length - 1) then
+    if line[0] = '(' && args = (0, line.Length - 1) then
         clearBrackets line[1..line.Length - 2]
     else
-        (new string(line), args.Force())
+        (new string(line), args)
 
 // Splitting a string by operations
 let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
@@ -160,15 +165,6 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
     else
         (line[..index - 1], line[index + 1..])
 
-(*
-    pre-processing
-    1. -1 => (-1)
-    2. |x| => (|x|)
-    3. 1 + 1 => 1+1
-*)
-//let preProcessing (line: string) : string =
-
-//    addBrackets2NegativeNum1 ((addBrackets2NegativeNum2 line 0 matchesNegative1).Replace(" ", "")) 0 matchesNegative2
 
 let convertToFunc (line: string) : Node =
     let operations = [|'+';'-';'*';'/';'^'|]
@@ -191,7 +187,7 @@ let convertToFunc (line: string) : Node =
         // Removing extra brackets
         let (removed, (l, r)) = clearBrackets charArray
 
-        printfn "l: %d r: %d => %s" l r removed
+        // printfn "l: %d r: %d => %s" l r removed
 
         match removed with 
         | "x" ->  { Value = None;          Operation = "x"; Left = None; Right = None; }
@@ -213,7 +209,7 @@ let convertToFunc (line: string) : Node =
         | _ -> let (lft, rght, i) = searchOperation (breakLine (l, r) operations[0] removed) removed (l, r) 0
                { Value = None; Operation = string operations[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
 
-    convert line
+    convert (line.Replace(" ", ""))
             
 
 let rec calculateFunc (node: Node) (x: float) : float =

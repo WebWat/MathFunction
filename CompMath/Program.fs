@@ -17,12 +17,13 @@ while true do
         printfn "String result: %s" (func.ToString())
 
         for i in -5.0..0.5..5.0 do
+            printf "y(%f) = %f | " i (calculateFunc func i)
             try
-                printfn "y(%f) = %f | y'(%f) = %f" i (calculateFunc func i) i (derivative func i)
+                printfn "y'(%f) = %f" i (derivative func i)
             with
-                | NotExist -> printfn "Not exist!"
+                | NotExist -> printfn "Not exist"
     with
-    | ex -> printfn "Incorrect input"
+    | _ -> printfn "Incorrect input"
 
     l.Stop()
 

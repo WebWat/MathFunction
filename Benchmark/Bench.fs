@@ -17,6 +17,14 @@ type NodeTest() = class
     [<Benchmark>]
     member this.Calculate() =
         calculateFunc node 0.05
+
+    //[<Benchmark>]
+    //member this.Range() =
+    //     this.Expr().ToCharArray()[2..this.Expr().Length - 2]
+
+    //[<Benchmark>]
+    //member this.Substr() =
+    //    this.Expr().Substring(2,this.Expr().Length - 2)
 end
         
 

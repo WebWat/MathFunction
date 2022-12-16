@@ -62,7 +62,7 @@ let isNumber (number) =
     // Parse with a dot
     Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
 
-let getBrackets (line: char[]) =
+let getBrackets (line: string) =
     // refactoring!!
     let getClose leftBracket leftModule =
         if leftBracket <> -1 && (leftModule = -1 || 
@@ -89,17 +89,17 @@ let getBrackets (line: char[]) =
                 findModule (total - 1) (current + 1) false
         else findModule total (current + 1) true
 
-    let (left, operation) = getClose (Array.IndexOf(line, '(')) (Array.IndexOf(line, '|'))
+    let (left, operation) = getClose (line.IndexOf '(') (line.IndexOf '|')
 
     match operation with
     | '(' -> (left, findBracket 1 (left + 1))
     | '|' -> (left, findModule 1 (left + 1) true)
     | _ -> (-1, -1)
 
-let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[])  =
+let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: string)  =
     let rec lookOutsideBracket (current: int) : int =
         if (left, right) = (-1, -1) then 
-            Array.IndexOf(line, symbol)
+            line.IndexOf(symbol)
         elif current = line.Length then 
             -1
         else
@@ -111,7 +111,7 @@ let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[]) 
             else
                 lookOutsideBracket (current + 1)
     
-    let rec checkRightSide (line: char[]) (rLast: int) (rCurrent: int) index =
+    let rec checkRightSide (line: string) (rLast: int) (rCurrent: int) index =
         let subLine = line[rLast + 2..]
         let (left, right) = getBrackets subLine
         
@@ -131,13 +131,13 @@ let checkValueInBrackets (left: int) (right: int) (symbol: char) (line: char[]) 
         checkRightSide line right right index
     // If negative number in start
     elif index = 0 && symbol = '-' then
-        let result = checkRightSide line right right (Array.IndexOf(line[1..line.Length - 1], '-'))
+        let result = checkRightSide line right right (line[1..line.Length - 1].IndexOf '-')
         if result = -1 then result
         else result + 1
     else
         index
  
-let rec clearBrackets (line: char[]) =
+let rec clearBrackets (line: string) =
     let args = getBrackets line
 
     if line[0] = '(' && args = (0, line.Length - 1) then
@@ -147,13 +147,11 @@ let rec clearBrackets (line: char[]) =
 
 // Splitting a string by operations
 let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
-    let charArray = line.ToCharArray()
-
     let (lbracket, rbracket) = brackets
 
-    let index = checkValueInBrackets lbracket rbracket symbol charArray
+    let index = checkValueInBrackets lbracket rbracket symbol line
 
-    let comp = lazy(Array.IndexOf(charArray[rbracket..rbracket + 1], symbol))
+    let comp = lazy(line[rbracket..rbracket + 1].IndexOf symbol)
 
     // If symbol not found
     if index = -1 then
@@ -182,10 +180,8 @@ let convertToFunc (line: string) : Node =
             findMatch matches (i + 1)
             
     let rec convert (line: string) =
-        let charArray = line.ToCharArray()
-
         // Removing extra brackets
-        let (removed, (l, r)) = clearBrackets charArray
+        let (removed, (l, r)) = clearBrackets line
 
         // printfn "l: %d r: %d => %s" l r removed
 

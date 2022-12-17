@@ -80,22 +80,22 @@ let getBracketsIndexes (line: string) =
         elif line[current] = ')' then findBracketsIndexes (total - 1) (current + 1)
         else findBracketsIndexes total (current + 1)
 
-    let rec findModulesIndexes total current notClosed =
+    let rec findModulesIndexes total current lastClose =
         if total = 0 then
             current - 1
         elif line[current] = '|' then
-            if notClosed && Regex.IsMatch(string line[current - 1], @"\W") then 
-                findModulesIndexes (total + 1) (current + 1) true
+            if not lastClose && line[current - 1] <> ')' && Regex.IsMatch(string line[current - 1], @"\W") then
+                findModulesIndexes (total + 1) (current + 1) false
             else
-                findModulesIndexes (total - 1) (current + 1) false
+                findModulesIndexes (total - 1) (current + 1) true
         else 
-            findModulesIndexes total (current + 1) true
+            findModulesIndexes total (current + 1) false
 
     let (left, operation) = getClosest (line.IndexOf '(') (line.IndexOf '|')
 
     match operation with
     | '(' -> (left, findBracketsIndexes 1 (left + 1))
-    | '|' -> (left, findModulesIndexes 1 (left + 1) true)
+    | '|' -> (left, findModulesIndexes 1 (left + 1) false)
     | _ -> (-1, -1)
 
 // Gets the character index, after passing various checks.

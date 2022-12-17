@@ -3,31 +3,43 @@ open System.Diagnostics
 open Function
 open Limit
 
+Debug.WriteLine("asd")
+
 while true do
     let l = new Stopwatch()
 
     printf "\nInput function: "
-
+    // |x^x+|ln(tg(x+2))||*(x+55)
     let text = Console.ReadLine()
 
-    l.Start()
+    if text = "clear" then
+        printfn "Before: %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
 
-    try
-        let func = convertToFunc text
-        printfn "String result: %s" (func.ToString())
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
 
-        for i in -5.0..0.5..5.0 do
-            printf "y(%f) = %f | " i (calculateFunc func i)
-            try
-                printfn "y'(%f) = %f" i (derivative func i)
-            with
-                | NotExist -> printfn "Not exist"
-    with
-    | _ -> printfn "Incorrect input"
+        printfn "After %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
 
-    l.Stop()
+    else
+        let l = new Stopwatch()
 
-    printfn "Total ms: %f" (float l.ElapsedMilliseconds * 1e-3)
+        l.Start()
+
+        try
+            let func = convertToFunc text
+            printfn "String result: %s" (func.ToString())
+            for i in -5.0..0.5..5.0 do
+                printfn "y(%f) = %f | " i (calculateFunc func i)
+                //try
+                //    printfn "y'(%f) = %f" i (derivative func i)
+                //with
+                //    | NotExist -> printfn "Not exist"
+        with
+        | _ -> printfn "Incorrect input"
+
+        l.Stop()
+
+        printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)
 
 Console.ReadLine() |> ignore
 

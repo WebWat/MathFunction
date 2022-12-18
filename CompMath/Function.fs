@@ -20,7 +20,7 @@ type Node =
         $"{{Value = {getData(this.Value)};Operation = \"{this.Operation}\";Left = {getData(this.Left)};Right = {getData(this.Right)};}}"
 
     member private this.IsComplexOperation (op: string) =
-        Array.contains op [|"ln"; "lg"; "sin"; "cos"; "tg"; "ctg"; "sqrt"; "^"; "+"; "-"; "|"|]
+        Array.contains op [|"ln"; "lg"; "sin"; "cos"; "tg"; "ctg"; "sqrt"; "log2"; "^"; "+"; "-"; "|"|]
 
     member private this.Func2String (op: string) =
         match this.Operation with
@@ -49,6 +49,7 @@ type Node =
         | "sin"  -> $"""sin({this.Right.Value.Func2String "sin"})"""
         | "cos"  -> $"""cos({this.Right.Value.Func2String "cos"})"""
         | "sqrt" -> $"""sqrt({this.Right.Value.Func2String "sqrt"})"""
+        | "log2" -> $"""log2({this.Right.Value.Func2String "log2"})"""
         | "tg"   -> $"""tg({this.Right.Value.Func2String "tg"})"""
         | "ctg"  -> $"""ctg({this.Right.Value.Func2String "ctg"})"""
         | _ -> failwith "Not working"
@@ -201,13 +202,13 @@ let convertToFunc (line: string) : Node =
                 | op when op.StartsWith("cos") -> { Value = None; Operation = "cos";  Right = Some(convert(op[4..r - 1])); Left = None; }
                 | op when op.StartsWith("ctg") -> { Value = None; Operation = "ctg";  Right = Some(convert(op[4..r - 1])); Left = None; }
                 | op when op.StartsWith("sqrt")-> { Value = None; Operation = "sqrt"; Right = Some(convert(op[5..r - 1])); Left = None; }
+                | op when op.StartsWith("log2")-> { Value = None; Operation = "log2"; Right = Some(convert(op[5..r - 1])); Left = None; }
                 | _ -> let (lft, rght, i) = searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
                        { Value = None; Operation = string symbols[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
         | _ -> let (lft, rght, i) = searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
                { Value = None; Operation = string symbols[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
 
-    convert (line.Replace(" ", ""))
-            
+    convert (line.Replace(" ", ""))      
 
 let rec calculateFunc (node: Node) (x: float) : float =
     if node.Value.IsSome then 
@@ -220,6 +221,7 @@ let rec calculateFunc (node: Node) (x: float) : float =
         | "sin"  -> Math.Sin(calculateFunc node.Right.Value x)
         | "cos"  -> Math.Cos(calculateFunc node.Right.Value x)
         | "sqrt" -> Math.Sqrt(calculateFunc node.Right.Value x)
+        | "log2" -> Math.Log2(calculateFunc node.Right.Value x)
         | "tg"   -> Math.Tan(calculateFunc node.Right.Value x)
         | "ctg"  -> 1. / Math.Tan(calculateFunc node.Right.Value x)
         | "|"    -> Math.Abs(calculateFunc node.Right.Value x)
@@ -229,3 +231,55 @@ let rec calculateFunc (node: Node) (x: float) : float =
         | "+"    -> calculateFunc node.Left.Value x + calculateFunc node.Right.Value x
         | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
         | _ -> failwith "Not available"
+
+let simplifyFunc (node: Node) =
+    let rec searchSimple (node: Node) (simple: bool) (value: float) (deep: int) (negative: bool) =
+        if node.Value.IsSome then 
+            if negative then
+                (value - node.Value.Value, deep)
+            else
+                (value + node.Value.Value, deep)
+        else
+            match node.Operation with
+            | "+" -> if node.Right.Value.Value.IsSome then
+                         searchSimple (node.Left.Value) true (value + node.Right.Value.Value.Value) (deep) false 
+                     elif node.Left.Value.Value.IsSome then
+                         searchSimple (node.Right.Value) true (value + node.Left.Value.Value.Value) (deep) false 
+                     else 
+                         searchSimple (node.Left.Value) true (value) (deep) false
+            | "-" -> if node.Left.Value.Value.IsSome then 
+                         if negative then
+                            searchSimple (node.Right.Value) true (value - node.Left.Value.Value.Value) (deep) true
+                         else
+                            searchSimple (node.Right.Value) true (value + node.Left.Value.Value.Value) (deep) true
+                     elif node.Right.Value.Value.IsSome then 
+                         if negative then
+                            searchSimple (node.Left.Value) true (value - node.Right.Value.Value.Value) (deep) true
+                         else
+                            searchSimple (node.Left.Value) true (value + node.Right.Value.Value.Value) (deep) true
+                     else 
+                         searchSimple (node.Right.Value) true (value) (deep) true
+            | _ ->   if simple then (value, deep)
+                     else searchSimple (node.Right.Value) false (value) (deep + 1) false
+
+    let mutable clear = true
+
+    let rec simple (node: Node) : Node =
+        match (node.Left.IsSome, node.Right.IsSome) with
+        | (true, true) -> if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
+                              clear <- false
+                              { Value = Some(calculateFunc node 0); Operation = ""; Left = None; Right = None }
+                          else
+                              { Value = None; Operation = node.Operation; Left = Some(simple node.Left.Value); Right = Some(simple node.Right.Value) }
+        | (false, true) -> { Value = None; Operation = node.Operation; Left = None; Right = Some(simple node.Right.Value) }
+        | (true, false) -> { Value = None; Operation = node.Operation; Left = Some(simple node.Left.Value); Right = None }
+        | _ -> node
+
+    let rec clearFunc (result: Node) =
+        if clear then
+            result
+        else
+            clear <- true
+            clearFunc (simple result)
+        
+    clearFunc (simple node)

@@ -13,6 +13,7 @@ let ``Simple calculations`` () =
     Assert.Equal(0., (calculateFunc (convertToFunc "(222+2)*(2-2)/(2+2)") 0))
     Assert.Equal(22., (calculateFunc (convertToFunc "(2+2)*2+(2+2)*2+(2+2*2)") 0))
     Assert.Equal(-30., (calculateFunc (convertToFunc "(2+2*(2+3*(2+4*(-2))))") 0))
+    Assert.Equal(2., (calculateFunc (convertToFunc "(10^2+11^2+12^2+13^2+14^2)/365") 0))
 
 [<Fact>]
 let ``Complex calculations`` () =
@@ -51,8 +52,14 @@ let ``Module`` () =
     Assert.Equal(6., (calculateFunc (convertToFunc "2+|-2|*2") 0))
     Assert.Equal(60., (calculateFunc (convertToFunc "|(-10)+2*|-20||*2") 0))
     Assert.Equal(0., (calculateFunc (convertToFunc "|||22-24|-1|-1|*2") 0))
+    Assert.Equal(12., (calculateFunc (convertToFunc "|2^2+|2||*(2)") 0))
     Assert.Equal(14., (calculateFunc (convertToFunc "|-4+2+2*(-2)*2|+|-2|^2") 0))
 
 //[<Fact>]
-//let ``Preprocessing tests`` () =
-//    Assert.Equal("(x+2)/((-2)-3)", preProcessing "(x + 2)/(-2-3)")
+//let ``Simplify`` () =
+//    Assert.Equal(6., (calculateFunc (convertToFunc "2+|-2|*2") 0))
+//    Assert.Equal(60., (calculateFunc (convertToFunc "|(-10)+2*|-20||*2") 0))
+//    Assert.Equal(0., (calculateFunc (convertToFunc "|||22-24|-1|-1|*2") 0))
+//    Assert.Equal(12., (calculateFunc (convertToFunc "|2^2+|2||*(2)") 0))
+//    Assert.Equal(14., (calculateFunc (convertToFunc "|-4+2+2*(-2)*2|+|-2|^2") 0))
+

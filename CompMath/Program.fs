@@ -9,39 +9,42 @@ while true do
     let l = new Stopwatch()
 
     printf "\nInput function: "
-    // |x^x+|ln(tg(x+2))||*(x+55)
-    let text = Console.ReadLine()
+    // |2^2+|2||*(2)
+    let text = "(x+10+10+10)*(10-x+2+3+4+5+6)"
+    let ne = simplifyFunc (convertToFunc text)
 
-    if text = "clear" then
-        printfn "Before: %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
+    printfn "%A" (ne.ToString())
 
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
+    //if text = "clear" then
+    //    printfn "Before: %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
 
-        printfn "After %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
+    //    GC.Collect();
+    //    GC.WaitForPendingFinalizers();
 
-    else
-        let l = new Stopwatch()
+    //    printfn "After %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
 
-        l.Start()
+    //else
+    //    let l = new Stopwatch()
 
-        try
-            let func = convertToFunc text
-            printfn "String result: %s" (func.ToString())
-            for i in -5.0..0.5..5.0 do
-                printfn "y(%f) = %f | " i (calculateFunc func i)
-                //try
-                //    printfn "y'(%f) = %f" i (derivative func i)
-                //with
-                //    | NotExist -> printfn "Not exist"
-        with
-        | _ -> printfn "Incorrect input"
+    //    l.Start()
 
-        l.Stop()
+    //    try
+    //        let func = simplifyFunc (convertToFunc text)
+    //        printfn "String result: %s" (func.ToString())
+    //        for i in -5.0..0.5..5.0 do
+    //            printfn "y(%f) = %f | " i (calculateFunc func i)
+    //            //try
+    //            //    printfn "y'(%f) = %f" i (derivative func i)
+    //            //with
+    //            //    | NotExist -> printfn "Not exist"
+    //    with
+    //    | _ -> printfn "Incorrect input"
 
-        printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)
+    //    l.Stop()
 
-Console.ReadLine() |> ignore
+    //    printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)
+
+    Console.ReadLine() |> ignore
 
 (*
     pre-processing

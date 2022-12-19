@@ -31,7 +31,7 @@ let ``Complex calculations`` () =
 [<Fact>]
 let ``Degree and Root`` () =
     Assert.Equal(16., (calculateFunc (convertToFunc "2^3+2^3") 0))
-    Assert.Equal(2.,  (calculateFunc (convertToFunc "2^(3-2)^3") 0))
+    Assert.Equal(8.,  (calculateFunc (convertToFunc "2^(3-2)^3") 0))
     Assert.Equal(16., (calculateFunc (convertToFunc "(2+2)^(4/2)") 0))
     Assert.Equal(10.,  (calculateFunc (convertToFunc "2*sqrt(4^2)+2") 0))
 

@@ -66,37 +66,39 @@ let isNumber (number) =
 // Get the bracket or module indexes.
 let getBracketsIndexes (line: string) =
     // Get the index of the nearest bracket or module
-    let getClosest leftBracket leftModule =
-        if leftBracket <> -1 && (leftModule = -1 || 
-           leftModule <> -1 && leftBracket < leftModule) then 
-           (leftBracket, '(')
-        elif leftModule <> -1 && (leftBracket = -1  || 
-             leftBracket <> -1 && leftModule < leftBracket) then 
+    let getClosest rightBracket leftModule =
+        if rightBracket <> -1 && (leftModule = -1 || 
+           leftModule <> -1 && rightBracket > leftModule) then 
+           (rightBracket, ')')
+        elif leftModule <> -1 && (rightBracket = -1  || 
+             rightBracket <> -1 && leftModule > rightBracket) then 
              (leftModule, '|')
         else (-1, '-')
 
     let rec findBracketsIndexes total current =
-        if total = 0 then current - 1
-        elif line[current] = '(' then findBracketsIndexes (total + 1) (current + 1)
-        elif line[current] = ')' then findBracketsIndexes (total - 1) (current + 1)
-        else findBracketsIndexes total (current + 1)
+        if total = 0 then current + 1
+        elif line[current] = '(' then findBracketsIndexes (total - 1) (current - 1)
+        elif line[current] = ')' then findBracketsIndexes (total + 1) (current - 1)
+        else findBracketsIndexes total (current - 1)
 
     let rec findModulesIndexes total current lastClose =
         if total = 0 then
+            current + 1
+        elif current = 1 then
             current - 1
         elif line[current] = '|' then
             if not lastClose && line[current - 1] <> ')' && Regex.IsMatch(string line[current - 1], @"\W") then
-                findModulesIndexes (total + 1) (current + 1) false
+                findModulesIndexes (total + 1) (current - 1) false
             else
-                findModulesIndexes (total - 1) (current + 1) true
+                findModulesIndexes (total - 1) (current - 1) true
         else 
-            findModulesIndexes total (current + 1) false
+            findModulesIndexes total (current - 1) false
 
-    let (left, operation) = getClosest (line.IndexOf '(') (line.IndexOf '|')
+    let (right, operation) = getClosest (line.LastIndexOf ')') (line.LastIndexOf '|')
 
     match operation with
-    | '(' -> (left, findBracketsIndexes 1 (left + 1))
-    | '|' -> (left, findModulesIndexes 1 (left + 1) false)
+    | ')' -> (findBracketsIndexes 1 (right - 1), right)
+    | '|' -> (findModulesIndexes -1 (right - 1) false, right)
     | _ -> (-1, -1)
 
 // Gets the character index, after passing various checks.
@@ -104,42 +106,40 @@ let getSymbolIndex (left: int) (right: int) (symbol: char) (line: string)  =
     // Looking for a symbol outside the brackets
     let rec lookOutside (current: int) : int =
         if (left, right) = (-1, -1) then 
-            line.IndexOf(symbol)
-        elif current = line.Length then 
+            line.LastIndexOf(symbol)
+        elif current <= 0 then 
             -1
         else
             if line[current] = symbol then
                 current
             // Skip inner
-            elif current = left then
-                lookOutside (current + right - left + 1)
+            elif current = right then
+                lookOutside (current - (right - left) - 1)
             else
-                lookOutside (current + 1)
+                lookOutside (current - 1)
     
     // Check that the symbol is not in other brackets
-    let rec checkRightSide (line: string) (rLast: int) (rCurrent: int) index =
-        let subLine = line[rLast + 2..]
+    let rec checkLeftSide (line: string) (lLast: int) index =
+        let subLine = line[..lLast - 2]
         let (left, right) = getBracketsIndexes subLine
         
-        let offset = index - rCurrent - 2
-        
-        if left = -1 || right = -1 || left > offset then
+        if left = -1 || right = -1 || index > right then
             index
-        elif offset < right then
+        elif left < index then
             -1
         else
-            checkRightSide subLine right (right + rCurrent + 2) index
+            checkLeftSide subLine left index
     
-    let index = lookOutside 0
+    let index = lookOutside (line.Length - 1)
 
     // If found symbol beyond expression
-    if right <> -1 && index > right + 1 then
-        checkRightSide line right right index
+    if left <> -1 && index < left then
+        checkLeftSide line left index
     // If a negative number at the beginning
-    elif index = 0 && symbol = '-' then
-        let result = checkRightSide line right right (line[1..line.Length - 1].IndexOf '-')
-        if result = -1 then result
-        else result + 1
+    //elif index = 0 && symbol = '-' then
+    //    let result = checkLeftSide line right (line[1..line.Length - 1].LastIndexOf '-')
+    //    if result = -1 then result
+    //    else result + 1
     else
         index
 
@@ -158,7 +158,7 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
 
     let index = getSymbolIndex lbracket rbracket symbol line
 
-    let comp = lazy(line[rbracket..rbracket + 1].IndexOf symbol)
+    let comp = lazy(line[rbracket..rbracket + 1].LastIndexOf symbol)
 
     // If symbol not found
     if index = -1 then
@@ -185,24 +185,25 @@ let convertToFunc (line: string) : Node =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
-        // printfn "l: %d r: %d => %s" l r removed
+        //printfn "l: %d r: %d => %s" l r removed
 
         match removed with 
         | "x" ->  { Value = None;         Operation = "x"; Left = None; Right = None; }
         | "pi" -> { Value = Some(Math.PI); Operation = ""; Left = None; Right = None; }
         | "e" ->  { Value = Some(Math.E);  Operation = ""; Left = None; Right = None; }
         | val1 when isNumber(val1) -> { Value = Some(float val1); Operation = ""; Right = None; Left = None }
-        | val1 when r = val1.Length - 1 -> 
+        | val1 when r = val1.Length - 1 && val1[r] = '|' && val1[0] = '|' -> 
+            { Value = None; Operation = "|"; Right = Some(convert(val1[1..val1.Length - 2])); Left = None; }
+        | val1 when r = val1.Length - 1 && l > 0 -> 
                 match val1 with
-                | op when op.StartsWith("|")  ->  { Value = None; Operation = "|";    Right = Some(convert(op[1..val1.Length - 2])); Left = None; }
-                | op when op.StartsWith("ln")  -> { Value = None; Operation = "ln";   Right = Some(convert(op[3..r - 1])); Left = None; }
-                | op when op.StartsWith("lg")  -> { Value = None; Operation = "lg";   Right = Some(convert(op[3..r - 1])); Left = None; }        
-                | op when op.StartsWith("tg")  -> { Value = None; Operation = "tg";   Right = Some(convert(op[3..r - 1])); Left = None; }
-                | op when op.StartsWith("sin") -> { Value = None; Operation = "sin";  Right = Some(convert(op[4..r - 1])); Left = None; }
-                | op when op.StartsWith("cos") -> { Value = None; Operation = "cos";  Right = Some(convert(op[4..r - 1])); Left = None; }
-                | op when op.StartsWith("ctg") -> { Value = None; Operation = "ctg";  Right = Some(convert(op[4..r - 1])); Left = None; }
-                | op when op.StartsWith("sqrt")-> { Value = None; Operation = "sqrt"; Right = Some(convert(op[5..r - 1])); Left = None; }
-                | op when op.StartsWith("log2")-> { Value = None; Operation = "log2"; Right = Some(convert(op[5..r - 1])); Left = None; }
+                | op when op.StartsWith("ln")   && l = 2 -> { Value = None; Operation = "ln";   Right = Some(convert(op[3..r - 1])); Left = None; }
+                | op when op.StartsWith("lg")   && l = 2 -> { Value = None; Operation = "lg";   Right = Some(convert(op[3..r - 1])); Left = None; }        
+                | op when op.StartsWith("tg")   && l = 2 -> { Value = None; Operation = "tg";   Right = Some(convert(op[3..r - 1])); Left = None; }
+                | op when op.StartsWith("sin")  && l = 3 -> { Value = None; Operation = "sin";  Right = Some(convert(op[4..r - 1])); Left = None; }
+                | op when op.StartsWith("cos")  && l = 3 -> { Value = None; Operation = "cos";  Right = Some(convert(op[4..r - 1])); Left = None; }
+                | op when op.StartsWith("ctg")  && l = 3 -> { Value = None; Operation = "ctg";  Right = Some(convert(op[4..r - 1])); Left = None; }
+                | op when op.StartsWith("sqrt") && l = 4 -> { Value = None; Operation = "sqrt"; Right = Some(convert(op[5..r - 1])); Left = None; }
+                | op when op.StartsWith("log2") && l = 4 -> { Value = None; Operation = "log2"; Right = Some(convert(op[5..r - 1])); Left = None; }
                 | _ -> let (lft, rght, i) = searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
                        { Value = None; Operation = string symbols[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
         | _ -> let (lft, rght, i) = searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
@@ -276,6 +277,7 @@ let simplifyFunc (node: Node) =
         | _ -> node
 
     let rec clearFunc (result: Node) =
+        printfn "%s" (result.ToString())
         if clear then
             result
         else

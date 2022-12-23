@@ -55,11 +55,3 @@ let ``Module`` () =
     Assert.Equal(12., (calculateFunc (convertToFunc "|2^2+|2||*(2)") 0))
     Assert.Equal(14., (calculateFunc (convertToFunc "|-4+2+2*(-2)*2|+|-2|^2") 0))
 
-//[<Fact>]
-//let ``Simplify`` () =
-//    Assert.Equal(6., (calculateFunc (convertToFunc "2+|-2|*2") 0))
-//    Assert.Equal(60., (calculateFunc (convertToFunc "|(-10)+2*|-20||*2") 0))
-//    Assert.Equal(0., (calculateFunc (convertToFunc "|||22-24|-1|-1|*2") 0))
-//    Assert.Equal(12., (calculateFunc (convertToFunc "|2^2+|2||*(2)") 0))
-//    Assert.Equal(14., (calculateFunc (convertToFunc "|-4+2+2*(-2)*2|+|-2|^2") 0))
-

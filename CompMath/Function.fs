@@ -196,14 +196,14 @@ let convertToFunc (line: string) : Node =
             { Value = None; Operation = "|"; Right = Some(convert(val1[1..val1.Length - 2])); Left = None; }
         | val1 when r = val1.Length - 1 && l > 0 -> 
                 match val1 with
-                | op when op.StartsWith("ln")   && l = 2 -> { Value = None; Operation = "ln";   Right = Some(convert(op[3..r - 1])); Left = None; }
-                | op when op.StartsWith("lg")   && l = 2 -> { Value = None; Operation = "lg";   Right = Some(convert(op[3..r - 1])); Left = None; }        
-                | op when op.StartsWith("tg")   && l = 2 -> { Value = None; Operation = "tg";   Right = Some(convert(op[3..r - 1])); Left = None; }
-                | op when op.StartsWith("sin")  && l = 3 -> { Value = None; Operation = "sin";  Right = Some(convert(op[4..r - 1])); Left = None; }
-                | op when op.StartsWith("cos")  && l = 3 -> { Value = None; Operation = "cos";  Right = Some(convert(op[4..r - 1])); Left = None; }
-                | op when op.StartsWith("ctg")  && l = 3 -> { Value = None; Operation = "ctg";  Right = Some(convert(op[4..r - 1])); Left = None; }
-                | op when op.StartsWith("sqrt") && l = 4 -> { Value = None; Operation = "sqrt"; Right = Some(convert(op[5..r - 1])); Left = None; }
-                | op when op.StartsWith("log2") && l = 4 -> { Value = None; Operation = "log2"; Right = Some(convert(op[5..r - 1])); Left = None; }
+                | op when op.StartsWith("ln")   && l = 2 -> { Value = None; Operation = "ln";   Left = None; Right = Some(convert(op[3..r - 1])); }
+                | op when op.StartsWith("lg")   && l = 2 -> { Value = None; Operation = "lg";   Left = None; Right = Some(convert(op[3..r - 1])); }        
+                | op when op.StartsWith("tg")   && l = 2 -> { Value = None; Operation = "tg";   Left = None; Right = Some(convert(op[3..r - 1])); }
+                | op when op.StartsWith("sin")  && l = 3 -> { Value = None; Operation = "sin";  Left = None; Right = Some(convert(op[4..r - 1])); }
+                | op when op.StartsWith("cos")  && l = 3 -> { Value = None; Operation = "cos";  Left = None; Right = Some(convert(op[4..r - 1])); }
+                | op when op.StartsWith("ctg")  && l = 3 -> { Value = None; Operation = "ctg";  Left = None; Right = Some(convert(op[4..r - 1])); }
+                | op when op.StartsWith("sqrt") && l = 4 -> { Value = None; Operation = "sqrt"; Left = None; Right = Some(convert(op[5..r - 1])); }
+                | op when op.StartsWith("log2") && l = 4 -> { Value = None; Operation = "log2"; Left = None; Right = Some(convert(op[5..r - 1])); }
                 | _ -> let (lft, rght, i) = searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
                        { Value = None; Operation = string symbols[i]; Left = Some(convert(lft)); Right = Some(convert(rght)) }
         | _ -> let (lft, rght, i) = searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
@@ -233,36 +233,30 @@ let rec calculateFunc (node: Node) (x: float) : float =
         | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
         | _ -> failwith "Not available"
 
-let simplifyFunc (node: Node) =
-    let rec searchSimple (node: Node) (simple: bool) (value: float) (deep: int) (negative: bool) =
-        if node.Value.IsSome then 
-            if negative then
-                (value - node.Value.Value, deep)
-            else
-                (value + node.Value.Value, deep)
-        else
-            match node.Operation with
-            | "+" -> if node.Right.Value.Value.IsSome then
-                         searchSimple (node.Left.Value) true (value + node.Right.Value.Value.Value) (deep) false 
-                     elif node.Left.Value.Value.IsSome then
-                         searchSimple (node.Right.Value) true (value + node.Left.Value.Value.Value) (deep) false 
-                     else 
-                         searchSimple (node.Left.Value) true (value) (deep) false
-            | "-" -> if node.Left.Value.Value.IsSome then 
-                         if negative then
-                            searchSimple (node.Right.Value) true (value - node.Left.Value.Value.Value) (deep) true
-                         else
-                            searchSimple (node.Right.Value) true (value + node.Left.Value.Value.Value) (deep) true
-                     elif node.Right.Value.Value.IsSome then 
-                         if negative then
-                            searchSimple (node.Left.Value) true (value - node.Right.Value.Value.Value) (deep) true
-                         else
-                            searchSimple (node.Left.Value) true (value + node.Right.Value.Value.Value) (deep) true
-                     else 
-                         searchSimple (node.Right.Value) true (value) (deep) true
-            | _ ->   if simple then (value, deep)
-                     else searchSimple (node.Right.Value) false (value) (deep + 1) false
+let isMiddle (operation: string) = operation = "-" || operation = "+"
 
+let rec checker (node: Node) (deep: int) : bool =
+    if deep > 1 then
+        true
+    elif isMiddle node.Operation then
+        if node.Right.Value.Value.IsSome then
+            checker node.Left.Value (deep + 1)
+        elif node.Left.Value.Value.IsSome then
+            checker node.Right.Value (deep + 1)
+        else
+            if deep > 1 then
+                true
+            else
+                false
+    elif deep = 1 then
+        false
+    else
+        if node.Left.IsSome then
+            checker node.Left.Value 0
+        else
+            checker node.Right.Value 0
+
+let simplifyFunc (node: Node) =
     let mutable clear = true
 
     let rec simple (node: Node) : Node =
@@ -284,4 +278,17 @@ let simplifyFunc (node: Node) =
             clear <- true
             clearFunc (simple result)
         
-    clearFunc (simple node)
+    clearFunc node
+
+let rec derivativeFunc (node: Node) : Node =
+    if node.Value.IsSome then 
+        { Value = Some(0.); Operation = ""; Right = None; Left = None }
+    else
+        match node.Operation with
+        | "x" -> { Value = Some(1.); Operation = ""; Right = None; Left = None }
+        | "^"    -> convertToFunc $"({node.Right.Value.ToString()}-1)*x^({(derivativeFunc (node.Right.Value)).ToString()})"
+        | "*"    -> convertToFunc $"{(derivativeFunc node.Left.Value).ToString()}*{node.Right.Value.ToString()}+{node.Left.Value.ToString()}*{(derivativeFunc node.Right.Value).ToString()}"
+        | "/"    -> convertToFunc $"({(derivativeFunc node.Left.Value).ToString()}*{node.Right.Value.ToString()}-{node.Left.Value.ToString()}*{(derivativeFunc node.Right.Value).ToString()})/({node.Right.Value.ToString()})"
+        | "+"    -> convertToFunc $"{(derivativeFunc node.Left.Value).ToString()}+{(derivativeFunc node.Right.Value).ToString()}"
+        | "-"    -> convertToFunc $"{(derivativeFunc node.Left.Value).ToString()}-{(derivativeFunc node.Right.Value).ToString()}"
+        | _ -> failwith "Not available"

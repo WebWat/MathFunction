@@ -4,44 +4,45 @@ open Function
 open Limit
 
 while true do
-    //let l = new Stopwatch()
-
     printf "\nInput function: "
-    // |2^2+|2||*(2)
-    let text = "1+x-3+4-x+6"
-    let ne = convertToFunc text
+    let text = Console.ReadLine()
 
-    printfn "%A" (ne)
-    //Console.ReadLine() |> ignore
+    //printfn "%A" ((simplifyFunc (derivativeFunc (convertToFunc text))).ToString())//((simplifyFunc (derivativeFunc (convertToFunc text))).ToString())
 
-    //if text = "clear" then
-    //    printfn "Before: %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
+    if text = "clear" then
+        printfn "Before: %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
 
-    //    GC.Collect();
-    //    GC.WaitForPendingFinalizers();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
 
-    //    printfn "After %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
+        printfn "After %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
 
-    //else
-    //    let l = new Stopwatch()
+    else
+        let l = new Stopwatch()
 
-    //    l.Start()
+        l.Start()
 
-    //    try
-    //        let func = convertToFunc text
-    //        //let ress = derivativeFunc func
-    //        printfn "String result: %s" (func.ToString())
-    //        for i in -5.0..0.5..5.0 do
-    //            printfn "y(%f) = %f | " i (calculateFunc func i)
-    //            //try
-    //            //    printfn "y'(%f) = %f" i (derivative func i)
-    //            //with
-    //            //    | NotExist -> printfn "Not exist"
-    //    with
-    //    | _ -> printfn "Incorrect input"
+        try
+            let func = convertToFunc text
+            let der = derivativeFunc func
 
-    //    l.Stop()
+            printfn "Function string: %s" (func.ToString())
+            printfn "Derivative string: %s" (der.ToString())
 
-    //    printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)
+            for i in -5.0..0.5..5.0 do
+                printf "y(%f) = %f | " i (calculateFunc func i)
 
-    Console.ReadLine() |> ignore
+                try
+                    printf "y' = %f | " (derivative func i)
+                with
+                    | NotExist -> printf "Not exist | "
+
+                printfn "y'alpha = %f"(calculateFunc der i)
+        with
+        | ex -> printfn "Incorrect input: %s" ex.Message
+
+        l.Stop()
+
+        printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)
+
+    // Console.ReadLine() |> ignore

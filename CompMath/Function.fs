@@ -20,11 +20,14 @@ type Node =
         $"{{Value = {getData(this.Value)};Operation = \"{this.Operation}\";Left = {getData(this.Left)};Right = {getData(this.Right)};}}"
 
     member private this.IsComplexOperation (op: string) =
-        Array.contains op [|"ln"; "lg"; "sin"; "cos"; "tg"; "ctg"; "sqrt"; "log2"; "^"; "+"; "-"; "|"|]
+        Array.contains op [|"ln"; "lg"; "sin"; "cos"; "tg"; "ctg"; "sqrt"; "log2"; "^"; "+"; "|"|]
 
     member private this.Func2String (op: string) =
         match this.Operation with
-        | "" -> string this.Value.Value
+        | "" -> if this.Value.Value < 0. then
+                    $"({this.Value.Value})"
+                else
+                    string this.Value.Value
         | "x" -> "x"
         | "+" -> if this.IsComplexOperation op then 
                     $"""{this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"}""" 
@@ -160,8 +163,11 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
 
     let comp = lazy(line[rbracket..rbracket + 1].LastIndexOf symbol)
 
+
+    if line[0] = '-' && symbol = '*' && Regex.IsMatch(string line[1], @"[a-z]") then
+        ("-1", line[1..])
     // If symbol not found
-    if index = -1 then
+    elif index = -1 then
         ("-", "-")
     // If multiply, divide and pow (right side only)
     elif lbracket <> -1 && lbracket < index && symbol <> '+' && symbol <> '-' && comp.Force() <> -1 then
@@ -181,7 +187,6 @@ let convertToFunc (line: string) : Node =
         | (val1, val2) -> (val1, val2, item)
 
     let rec convert (line: string) =
-
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
@@ -233,31 +238,60 @@ let rec calculateFunc (node: Node) (x: float) : float =
         | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
         | _ -> failwith "Not available"
 
-let isMiddle (operation: string) = operation = "-" || operation = "+"
-
-let rec checker (node: Node) (deep: int) : bool =
-    if deep > 1 then
-        true
-    elif isMiddle node.Operation then
-        if node.Right.Value.Value.IsSome then
-            checker node.Left.Value (deep + 1)
-        elif node.Left.Value.Value.IsSome then
-            checker node.Right.Value (deep + 1)
-        else
-            if deep > 1 then
-                true
-            else
-                false
-    elif deep = 1 then
-        false
+let rec derivativeFunc (node: Node) : Node =
+    if node.Value.IsSome then 
+        { Value = Some(0.); Operation = ""; Right = None; Left = None }
     else
-        if node.Left.IsSome then
-            checker node.Left.Value 0
-        else
-            checker node.Right.Value 0
+        match node.Operation with
+        | "x" -> { Value = Some(1.); Operation = ""; Right = None; Left = None }
+        | "^"    -> if node.Right.Value.Value.IsSome then
+                        convertToFunc $"({node.Right.Value})*({node.Left.Value})^({node.Right.Value.Value.Value}-1)*({derivativeFunc node.Left.Value})"
+                    else
+                        let hard = convertToFunc $"ln({node.Left.Value})"
+                        let symbol = "*"
+                        convertToFunc $"e^({node.Right.Value}*ln({node.Left.Value})*({derivativeFunc { Value = None; Operation = symbol; Left = Some(node.Left.Value); Right = Some(hard)}}))"
+        | "*"    -> convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value}))+(({node.Left.Value})*({derivativeFunc node.Right.Value}))"
+        | "/"    -> convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value})-({node.Left.Value})*({derivativeFunc node.Right.Value}))/({node.Right.Value})^2"
+        | "+"    -> convertToFunc $"{derivativeFunc node.Left.Value}+{derivativeFunc node.Right.Value}"
+        | "-"    -> convertToFunc $"{derivativeFunc node.Left.Value}-{derivativeFunc node.Right.Value}"
+        | "ln"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/({node.Right.Value})"
+        | "sin"    -> convertToFunc $"({derivativeFunc node.Right.Value})*cos({node.Right.Value})"
+        | "cos"    -> convertToFunc $"({derivativeFunc node.Right.Value})*(-sin({node.Right.Value}))"
+        | "tg"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(cos({node.Right.Value})^2)"
+        | "ctg"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(-sin({node.Right.Value})^2)"
+        | "sqrt"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(2*sqrt({node.Right.Value}))"
+        | _ -> failwith "Not available"
 
+
+// wait
+let rec simpleStart (node: Node) : Node =
+        if node.Value.IsSome || node.Operation = "x" then
+            node
+        else
+            // NOT WORKING WITH COMPLEX FUNCTIONS
+            match (node.Left.Value.Value.IsSome, node.Right.Value.Value.IsSome, node.Operation) with
+            | (true, true, "*") -> match (node.Left.Value.Value.Value, node.Right.Value.Value.Value) with
+                              | (1., _) -> { Value = node.Right.Value.Value; Operation = ""; Left = None; Right = None }
+                              | (_, 1.) -> { Value = node.Left.Value.Value; Operation = ""; Left = None; Right = None }
+                              | (0., _) | (_, 0.) -> { Value = Some(0.); Operation = ""; Left = None; Right = None }
+                              | _ -> node
+            | (false, true, "*") -> if node.Right.Value.Value.Value = 0. then
+                                        { Value = Some(0.); Operation = ""; Left = None; Right = None }
+                                    elif node.Right.Value.Value.Value = 1. then
+                                        node.Left.Value
+                                    else
+                                        { Value = None; Operation = node.Operation; Left = Some(simpleStart node.Left.Value); Right = node.Right }
+            | (true, false, "*") -> if node.Left.Value.Value.Value = 0. then
+                                        { Value = Some(0.); Operation = ""; Left = None; Right = None }
+                                    elif node.Left.Value.Value.Value = 1. then
+                                        node.Right.Value
+                                    else
+                                        { Value = None; Operation = node.Operation; Left = node.Left; Right = Some(simpleStart node.Right.Value) }
+            | _ -> { Value = None; Operation = node.Operation; Left = Some(simpleStart node.Left.Value); Right = Some(simpleStart node.Right.Value) }
+
+// wait
 let simplifyFunc (node: Node) =
-    let mutable clear = true
+    let mutable clear = false
 
     let rec simple (node: Node) : Node =
         match (node.Left.IsSome, node.Right.IsSome) with
@@ -271,24 +305,10 @@ let simplifyFunc (node: Node) =
         | _ -> node
 
     let rec clearFunc (result: Node) =
-        printfn "%s" (result.ToString())
         if clear then
             result
         else
             clear <- true
             clearFunc (simple result)
         
-    clearFunc node
-
-let rec derivativeFunc (node: Node) : Node =
-    if node.Value.IsSome then 
-        { Value = Some(0.); Operation = ""; Right = None; Left = None }
-    else
-        match node.Operation with
-        | "x" -> { Value = Some(1.); Operation = ""; Right = None; Left = None }
-        | "^"    -> convertToFunc $"({node.Right.Value.ToString()}-1)*x^({(derivativeFunc (node.Right.Value)).ToString()})"
-        | "*"    -> convertToFunc $"{(derivativeFunc node.Left.Value).ToString()}*{node.Right.Value.ToString()}+{node.Left.Value.ToString()}*{(derivativeFunc node.Right.Value).ToString()}"
-        | "/"    -> convertToFunc $"({(derivativeFunc node.Left.Value).ToString()}*{node.Right.Value.ToString()}-{node.Left.Value.ToString()}*{(derivativeFunc node.Right.Value).ToString()})/({node.Right.Value.ToString()})"
-        | "+"    -> convertToFunc $"{(derivativeFunc node.Left.Value).ToString()}+{(derivativeFunc node.Right.Value).ToString()}"
-        | "-"    -> convertToFunc $"{(derivativeFunc node.Left.Value).ToString()}-{(derivativeFunc node.Right.Value).ToString()}"
-        | _ -> failwith "Not available"
+    clearFunc (simpleStart (simple node))

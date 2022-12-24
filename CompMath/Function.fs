@@ -33,10 +33,7 @@ type Node =
                     $"""{this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"}""" 
                  else
                     $"""({this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"})"""
-        | "-" -> if this.IsComplexOperation op then 
-                    $"""{this.Left.Value.Func2String "-"}-{this.Right.Value.Func2String "-"}""" 
-                 else
-                    $"""({this.Left.Value.Func2String "-"}-{this.Right.Value.Func2String "-"})"""
+        | "-" -> $"""({this.Left.Value.Func2String "-"}-{this.Right.Value.Func2String "-"})"""
         | "*" -> if this.IsComplexOperation op || op = "*" then 
                     $"""{this.Left.Value.Func2String "*"}*{this.Right.Value.Func2String "*"}""" 
                  else
@@ -245,15 +242,17 @@ let rec derivativeFunc (node: Node) : Node =
         match node.Operation with
         | "x" -> { Value = Some(1.); Operation = ""; Right = None; Left = None }
         | "^"    -> if node.Right.Value.Value.IsSome then
-                        convertToFunc $"({node.Right.Value})*({node.Left.Value})^({node.Right.Value.Value.Value}-1)*({derivativeFunc node.Left.Value})"
+                        convertToFunc $"({derivativeFunc node.Left.Value})*({node.Right.Value})*({node.Left.Value})^({node.Right.Value.Value.Value}-1)"
+                    elif node.Left.Value.Value.IsSome then
+                        convertToFunc $"({derivativeFunc node.Right.Value})*({node.Left.Value})^({node.Right.Value})*ln({node.Left.Value})"
                     else
                         let hard = convertToFunc $"ln({node.Left.Value})"
                         let symbol = "*"
-                        convertToFunc $"e^({node.Right.Value}*ln({node.Left.Value})*({derivativeFunc { Value = None; Operation = symbol; Left = Some(node.Left.Value); Right = Some(hard)}}))"
+                        convertToFunc $"e^({node.Right.Value}*ln({node.Left.Value}))*({derivativeFunc { Value = None; Operation = symbol; Left = Some(node.Left.Value); Right = Some(hard)}})"
         | "*"    -> convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value}))+(({node.Left.Value})*({derivativeFunc node.Right.Value}))"
         | "/"    -> convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value})-({node.Left.Value})*({derivativeFunc node.Right.Value}))/({node.Right.Value})^2"
         | "+"    -> convertToFunc $"{derivativeFunc node.Left.Value}+{derivativeFunc node.Right.Value}"
-        | "-"    -> convertToFunc $"{derivativeFunc node.Left.Value}-{derivativeFunc node.Right.Value}"
+        | "-"    -> convertToFunc $"{derivativeFunc node.Left.Value}-({derivativeFunc node.Right.Value})"
         | "ln"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/({node.Right.Value})"
         | "sin"    -> convertToFunc $"({derivativeFunc node.Right.Value})*cos({node.Right.Value})"
         | "cos"    -> convertToFunc $"({derivativeFunc node.Right.Value})*(-sin({node.Right.Value}))"
@@ -262,46 +261,49 @@ let rec derivativeFunc (node: Node) : Node =
         | "sqrt"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(2*sqrt({node.Right.Value}))"
         | _ -> failwith "Not available"
 
-
-// wait
-let rec simpleStart (node: Node) : Node =
-        if node.Value.IsSome || node.Operation = "x" then
-            node
-        else
-            // NOT WORKING WITH COMPLEX FUNCTIONS
-            match (node.Left.Value.Value.IsSome, node.Right.Value.Value.IsSome, node.Operation) with
-            | (true, true, "*") -> match (node.Left.Value.Value.Value, node.Right.Value.Value.Value) with
-                              | (1., _) -> { Value = node.Right.Value.Value; Operation = ""; Left = None; Right = None }
-                              | (_, 1.) -> { Value = node.Left.Value.Value; Operation = ""; Left = None; Right = None }
-                              | (0., _) | (_, 0.) -> { Value = Some(0.); Operation = ""; Left = None; Right = None }
-                              | _ -> node
-            | (false, true, "*") -> if node.Right.Value.Value.Value = 0. then
-                                        { Value = Some(0.); Operation = ""; Left = None; Right = None }
-                                    elif node.Right.Value.Value.Value = 1. then
-                                        node.Left.Value
-                                    else
-                                        { Value = None; Operation = node.Operation; Left = Some(simpleStart node.Left.Value); Right = node.Right }
-            | (true, false, "*") -> if node.Left.Value.Value.Value = 0. then
-                                        { Value = Some(0.); Operation = ""; Left = None; Right = None }
-                                    elif node.Left.Value.Value.Value = 1. then
-                                        node.Right.Value
-                                    else
-                                        { Value = None; Operation = node.Operation; Left = node.Left; Right = Some(simpleStart node.Right.Value) }
-            | _ -> { Value = None; Operation = node.Operation; Left = Some(simpleStart node.Left.Value); Right = Some(simpleStart node.Right.Value) }
-
-// wait
 let simplifyFunc (node: Node) =
-    let mutable clear = false
+    let mutable clear = true
+    let mutable nt = 0.
+
+    let change (op: string) (number: float) =
+        if op = "-" then
+            -number
+        else
+            number
+
+    let rec middle (node: Node) : Node =
+        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+        | (true, true, val1) when val1 = "+" || val1 = "-" -> 
+            if node.Left.Value.Value.IsSome then
+                nt <- nt + node.Left.Value.Value.Value
+                node.Right.Value
+            elif node.Right.Value.Value.IsSome then
+                nt <- nt + change node.Operation node.Right.Value.Value.Value
+                node.Left.Value
+            else
+                { Value = None; Operation = node.Operation; Left = Some(middle node.Left.Value); Right = Some(middle node.Right.Value) }
+        | (false, true, _) -> { Value = None; Operation = node.Operation; Left = None; Right = Some(middle node.Right.Value) }
+        | _ -> node
 
     let rec simple (node: Node) : Node =
         match (node.Left.IsSome, node.Right.IsSome) with
         | (true, true) -> if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
                               clear <- false
                               { Value = Some(calculateFunc node 0); Operation = ""; Left = None; Right = None }
+                          elif node.Operation = "*" && ((node.Left.Value.Value.IsSome && node.Left.Value.Value.Value = 0.) || 
+                              (node.Right.Value.Value.IsSome && node.Right.Value.Value.Value = 0.)) then
+                              clear <- false
+                              { Value = Some(0.); Operation = ""; Left = None; Right = None }
+                              // ^^^^^^^^^^
+                          elif (node.Operation = "*" && node.Left.Value.Value.IsSome && node.Left.Value.Value.Value = 1.) then
+                              clear <- false
+                              node.Right.Value 
+                          elif (node.Operation = "*" && node.Right.Value.Value.IsSome && node.Right.Value.Value.Value = 1.) then
+                              clear <- false
+                              node.Left.Value
                           else
                               { Value = None; Operation = node.Operation; Left = Some(simple node.Left.Value); Right = Some(simple node.Right.Value) }
         | (false, true) -> { Value = None; Operation = node.Operation; Left = None; Right = Some(simple node.Right.Value) }
-        | (true, false) -> { Value = None; Operation = node.Operation; Left = Some(simple node.Left.Value); Right = None }
         | _ -> node
 
     let rec clearFunc (result: Node) =
@@ -311,4 +313,4 @@ let simplifyFunc (node: Node) =
             clear <- true
             clearFunc (simple result)
         
-    clearFunc (simpleStart (simple node))
+    clearFunc (simple node)

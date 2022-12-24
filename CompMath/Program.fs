@@ -7,8 +7,6 @@ while true do
     printf "\nInput function: "
     let text = Console.ReadLine()
 
-    //printfn "%A" ((simplifyFunc (derivativeFunc (convertToFunc text))).ToString())//((simplifyFunc (derivativeFunc (convertToFunc text))).ToString())
-
     if text = "clear" then
         printfn "Before: %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
 
@@ -24,7 +22,7 @@ while true do
 
         try
             let func = convertToFunc text
-            let der = derivativeFunc func
+            let der = simplifyFunc (derivativeFunc func)
 
             printfn "Function string: %s" (func.ToString())
             printfn "Derivative string: %s" (der.ToString())
@@ -44,5 +42,3 @@ while true do
         l.Stop()
 
         printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)
-
-    // Console.ReadLine() |> ignore

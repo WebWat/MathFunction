@@ -1,4 +1,4 @@
-﻿module Functions
+﻿module ConvertAndCalculate
 
 open System
 open Function

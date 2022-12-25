@@ -5,7 +5,7 @@ open Limit
 
 while true do
     printf "\nInput function: "
-    let text = Console.ReadLine()
+    let text = Console.ReadLine() //1/(x*cos(2*x))
 
     if text = "clear" then
         printfn "Before: %.1f KB" (float (GC.GetTotalMemory(false)) / (1024. * 1024.))

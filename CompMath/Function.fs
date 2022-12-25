@@ -29,19 +29,10 @@ type Node =
                 else
                     string this.Value.Value
         | "x" -> "x"
-        | "+" -> if this.IsComplexOperation op then 
-                    $"""{this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"}""" 
-                 else
-                    $"""({this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"})"""
+        | "+" -> $"""({this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"})"""
         | "-" -> $"""({this.Left.Value.Func2String "-"}-{this.Right.Value.Func2String "-"})"""
-        | "*" -> if this.IsComplexOperation op || op = "*" then 
-                    $"""{this.Left.Value.Func2String "*"}*{this.Right.Value.Func2String "*"}""" 
-                 else
-                    $"""({this.Left.Value.Func2String "*"}*{this.Right.Value.Func2String "*"})"""
-        | "/" -> if this.IsComplexOperation op then 
-                    $"""{this.Left.Value.Func2String "/"}/{this.Right.Value.Func2String "/"}""" 
-                 else
-                    $"""({this.Left.Value.Func2String "/"}/{this.Right.Value.Func2String "/"})"""
+        | "*" -> $"""({this.Left.Value.Func2String "*"}*{this.Right.Value.Func2String "*"})"""
+        | "/" -> $"""({this.Left.Value.Func2String "/"}/{this.Right.Value.Func2String "/"})"""
         | "^"    -> $"""({this.Left.Value.Func2String "^"})^({this.Right.Value.Func2String "^"})"""
         | "|"    -> $"""|{this.Right.Value.Func2String "|"}|"""
         | "ln"   -> $"""ln({this.Right.Value.Func2String "ln"})"""
@@ -58,6 +49,7 @@ type Node =
         let result = this.Func2String(this.Operation)
         result
 
+      
 let isNumber (number) =
     let mutable temp = 0.0
     // Parse with a dot
@@ -87,7 +79,7 @@ let getBracketsIndexes (line: string) =
         elif current = 1 then
             current - 1
         elif line[current] = '|' then
-            if not lastClose && line[current - 1] <> ')' && Regex.IsMatch(string line[current - 1], @"\W") then
+            if not lastClose && line[current - 1] <> ')' && line[current - 1] <> '|' && Regex.IsMatch(string line[current - 1], @"\W") then
                 findModulesIndexes (total + 1) (current - 1) false
             else
                 findModulesIndexes (total - 1) (current - 1) true
@@ -235,6 +227,12 @@ let rec calculateFunc (node: Node) (x: float) : float =
         | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
         | _ -> failwith "Not available"
 
+
+
+
+
+// In developing...
+
 let rec derivativeFunc (node: Node) : Node =
     if node.Value.IsSome then 
         { Value = Some(0.); Operation = ""; Right = None; Left = None }
@@ -242,20 +240,20 @@ let rec derivativeFunc (node: Node) : Node =
         match node.Operation with
         | "x" -> { Value = Some(1.); Operation = ""; Right = None; Left = None }
         | "^"    -> if node.Right.Value.Value.IsSome then
-                        convertToFunc $"({derivativeFunc node.Left.Value})*({node.Right.Value})*({node.Left.Value})^({node.Right.Value.Value.Value}-1)"
+                        convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value})*({node.Left.Value})^({node.Right.Value.Value.Value}-1))"
                     elif node.Left.Value.Value.IsSome then
-                        convertToFunc $"({derivativeFunc node.Right.Value})*({node.Left.Value})^({node.Right.Value})*ln({node.Left.Value})"
+                        convertToFunc $"(({derivativeFunc node.Right.Value})*({node.Left.Value})^({node.Right.Value})*ln({node.Left.Value}))"
                     else
                         let hard = convertToFunc $"ln({node.Left.Value})"
                         let symbol = "*"
-                        convertToFunc $"e^({node.Right.Value}*ln({node.Left.Value}))*({derivativeFunc { Value = None; Operation = symbol; Left = Some(node.Left.Value); Right = Some(hard)}})"
+                        convertToFunc $"e^(({node.Right.Value})*ln({node.Left.Value}))*({derivativeFunc { Value = None; Operation = symbol; Left = Some(node.Left.Value); Right = Some(hard)}})"
         | "*"    -> convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value}))+(({node.Left.Value})*({derivativeFunc node.Right.Value}))"
         | "/"    -> convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value})-({node.Left.Value})*({derivativeFunc node.Right.Value}))/({node.Right.Value})^2"
         | "+"    -> convertToFunc $"{derivativeFunc node.Left.Value}+{derivativeFunc node.Right.Value}"
         | "-"    -> convertToFunc $"{derivativeFunc node.Left.Value}-({derivativeFunc node.Right.Value})"
         | "ln"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/({node.Right.Value})"
-        | "sin"    -> convertToFunc $"({derivativeFunc node.Right.Value})*cos({node.Right.Value})"
-        | "cos"    -> convertToFunc $"({derivativeFunc node.Right.Value})*(-sin({node.Right.Value}))"
+        | "sin"    -> convertToFunc $"(({derivativeFunc node.Right.Value})*cos({node.Right.Value}))"
+        | "cos"    -> convertToFunc $"(({derivativeFunc node.Right.Value})*(-sin({node.Right.Value})))"
         | "tg"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(cos({node.Right.Value})^2)"
         | "ctg"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(-sin({node.Right.Value})^2)"
         | "sqrt"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(2*sqrt({node.Right.Value}))"

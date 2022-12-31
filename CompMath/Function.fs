@@ -99,7 +99,7 @@ let getSymbolIndex (left: int) (right: int) (symbol: char) (line: string)  =
     let rec lookOutside (current: int) : int =
         if (left, right) = (-1, -1) then 
             line.LastIndexOf(symbol)
-        elif current <= 0 then 
+        elif current < 0 then 
             -1
         else
             if line[current] = symbol then
@@ -125,13 +125,8 @@ let getSymbolIndex (left: int) (right: int) (symbol: char) (line: string)  =
     let index = lookOutside (line.Length - 1)
 
     // If found symbol beyond expression
-    if left <> -1 && index < left then
+    if left <> -1 && index < left && index <> 0 then
         checkLeftSide line left index
-    // If a negative number at the beginning
-    //elif index = 0 && symbol = '-' then
-    //    let result = checkLeftSide line right (line[1..line.Length - 1].LastIndexOf '-')
-    //    if result = -1 then result
-    //    else result + 1
     else
         index
 
@@ -152,12 +147,15 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
 
     let comp = lazy(line[rbracket..rbracket + 1].LastIndexOf symbol)
 
-
+    // If complex function (cos, sin, log, ...) then -sin => -1 * sin
     if line[0] = '-' && symbol = '*' && Regex.IsMatch(string line[1], @"[a-z]") then
         ("-1", line[1..])
     // If symbol not found
     elif index = -1 then
         ("-", "-")
+    // If -number
+    elif symbol = '-' && index = 0 then
+        ("0", line[1..])
     // If multiply, divide and pow (right side only)
     elif lbracket <> -1 && lbracket < index && symbol <> '+' && symbol <> '-' && comp.Force() <> -1 then
         (line[0..rbracket], line[rbracket + 2..])
@@ -226,8 +224,6 @@ let rec calculateFunc (node: Node) (x: float) : float =
         | "+"    -> calculateFunc node.Left.Value x + calculateFunc node.Right.Value x
         | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
         | _ -> failwith "Not available"
-
-
 
 
 

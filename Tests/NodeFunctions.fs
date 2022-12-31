@@ -1,6 +1,5 @@
 ﻿module NodeFunctions
 
-open System
 open Function
 open Xunit
 
@@ -47,9 +46,25 @@ let ``Get symbol index`` () =
     // Default
     Assert.Equal(1, (getSymbolIndex -1 -1 '+' "x+2"))
     Assert.Equal(-1, (getSymbolIndex -1 -1 '+' "x-2"))
+    Assert.Equal(0, (getSymbolIndex -1 -1 '-' "-10.0^2"))
 
+    // With brackets
+    Assert.Equal(3, (getSymbolIndex 4 8 '+' "2.2+(x+2)"))
+    Assert.Equal(5, (getSymbolIndex 0 4 '+' "(x+2)+2"))
+    Assert.Equal(-1, (getSymbolIndex 0 4 '+' "(x+2)"))
 
-// What about complex functions???
+[<Fact>]
+let ``Remove extra brackets`` () =
+    // Default
+    Assert.Equal("x+2", fst (removeExtraBrackets "x+2"))
+    Assert.Equal("x+2", fst (removeExtraBrackets "(x+2)"))
+    Assert.Equal("x+2", fst (removeExtraBrackets "((x+2))"))
+    Assert.Equal("x+2", fst (removeExtraBrackets "(((x+2)))"))
+
+    // Complex
+    Assert.Equal("(x+2)+(x+3)", fst (removeExtraBrackets "(x+2)+(x+3)"))
+    Assert.Equal("(x+2*(x+3))+(x+3)", fst (removeExtraBrackets "(x+2*(x+3))+(x+3)"))
+    Assert.Equal("(x+2*(x+3))+(x+3)", fst (removeExtraBrackets "((x+2*(x+3))+(x+3))"))
 
 
 

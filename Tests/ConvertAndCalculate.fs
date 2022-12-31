@@ -14,6 +14,7 @@ let ``Simple calculations`` () =
     Assert.Equal(22., (calculateFunc (convertToFunc "(2+2)*2+(2+2)*2+(2+2*2)") 0))
     Assert.Equal(-30., (calculateFunc (convertToFunc "(2+2*(2+3*(2+4*(-2))))") 0))
     Assert.Equal(2., (calculateFunc (convertToFunc "(10^2+11^2+12^2+13^2+14^2)/365") 0))
+    Assert.Equal(2., (calculateFunc (convertToFunc "(-10.0^2-11^2-12^2-13^2-14^2)/(-365)") 0))
 
 [<Fact>]
 let ``Complex calculations`` () =
@@ -33,6 +34,9 @@ let ``Degree and Root`` () =
     Assert.Equal(16., (calculateFunc (convertToFunc "2^3+2^3") 0))
     Assert.Equal(8.,  (calculateFunc (convertToFunc "2^(3-2)^3") 0))
     Assert.Equal(16., (calculateFunc (convertToFunc "(2+2)^(4/2)") 0))
+    Assert.Equal(-100., (calculateFunc (convertToFunc "-10^2") 0))
+    Assert.Equal(100., (calculateFunc (convertToFunc "(-10)^2") 0))
+    Assert.Equal(-100., (calculateFunc (convertToFunc "-(10)^2") 0))
     Assert.Equal(10.,  (calculateFunc (convertToFunc "2*sqrt(4^2)+2") 0))
 
 [<Fact>]
@@ -43,7 +47,7 @@ let ``Logarithms`` () =
 
 [<Fact>]
 let ``Trigonometry`` () =
-    Assert.Equal(1., (calculateFunc (convertToFunc "cos(1)^2+sin(1)^2") 0))
+    Assert.Equal(1., (calculateFunc (convertToFunc "cos(1.0)^2.0+sin(1.0)^2.0") 0))
     Assert.Equal(0.,  (calculateFunc (convertToFunc "(1-cos(2*pi))/2") 0))
     Assert.Equal(1., round (calculateFunc (convertToFunc "tg(e)*ctg(e)") 0))
 

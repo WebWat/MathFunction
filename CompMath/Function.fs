@@ -12,6 +12,14 @@ type Node =
     Right: Option<Node>
     }
 
+    member this.IsFunction() =
+        this.Value.IsNone && this.Operation <> "x" && not (this.IsComplexFunction())
+
+    member this.IsComplexFunction() =
+        match this.Operation with
+        | "ln" | "lg" | "sin" | "cos" | "sqrt" | "log2" | "tg" | "ctg" -> true
+        | _ -> false
+
     member this.ToRecord() =
         let getData (value: Option<'a>) =
             if value.IsSome then "Some(" + value.Value.ToString() + ")"
@@ -19,35 +27,52 @@ type Node =
 
         $"{{Value = {getData(this.Value)};Operation = \"{this.Operation}\";Left = {getData(this.Left)};Right = {getData(this.Right)};}}"
 
-    member private this.IsComplexOperation (op: string) =
-        Array.contains op [|"ln"; "lg"; "sin"; "cos"; "tg"; "ctg"; "sqrt"; "log2"; "^"; "+"; "|"|]
-
-    member private this.Func2String (op: string) =
+    override this.ToString() =
         match this.Operation with
         | "" -> if this.Value.Value < 0. then
                     $"({this.Value.Value})"
                 else
                     string this.Value.Value
         | "x" -> "x"
-        | "+" -> $"""({this.Left.Value.Func2String "+"}+{this.Right.Value.Func2String "+"})"""
-        | "-" -> $"""({this.Left.Value.Func2String "-"}-{this.Right.Value.Func2String "-"})"""
-        | "*" -> $"""({this.Left.Value.Func2String "*"}*{this.Right.Value.Func2String "*"})"""
-        | "/" -> $"""({this.Left.Value.Func2String "/"}/{this.Right.Value.Func2String "/"})"""
-        | "^"    -> $"""({this.Left.Value.Func2String "^"})^({this.Right.Value.Func2String "^"})"""
-        | "|"    -> $"""|{this.Right.Value.Func2String "|"}|"""
-        | "ln"   -> $"""ln({this.Right.Value.Func2String "ln"})"""
-        | "lg"   -> $"""lg({this.Right.Value.Func2String "lg"})"""
-        | "sin"  -> $"""sin({this.Right.Value.Func2String "sin"})"""
-        | "cos"  -> $"""cos({this.Right.Value.Func2String "cos"})"""
-        | "sqrt" -> $"""sqrt({this.Right.Value.Func2String "sqrt"})"""
-        | "log2" -> $"""log2({this.Right.Value.Func2String "log2"})"""
-        | "tg"   -> $"""tg({this.Right.Value.Func2String "tg"})"""
-        | "ctg"  -> $"""ctg({this.Right.Value.Func2String "ctg"})"""
+        | "+" -> $"{this.Left.Value.ToString()}+{this.Right.Value.ToString()}"
+        | "-" -> if this.Right.Value.IsFunction() then
+                    $"{this.Left.Value.ToString()}-({this.Right.Value.ToString()})"
+                 else
+                    $"{this.Left.Value.ToString()}-{this.Right.Value.ToString()}"
+        | "*" -> if this.Left.Value.IsFunction() && this.Right.Value.IsFunction() then
+                    $"({this.Left.Value.ToString()})*({this.Right.Value.ToString()})"
+                 elif this.Left.Value.IsFunction() then
+                    $"({this.Left.Value.ToString()})*{this.Right.Value.ToString()}"
+                 elif this.Right.Value.IsFunction() then
+                    $"{this.Left.Value.ToString()}*({this.Right.Value.ToString()})"
+                 else
+                    $"{this.Left.Value.ToString()}*{this.Right.Value.ToString()}"
+        | "/" -> if this.Left.Value.IsFunction() && this.Right.Value.IsFunction() then
+                    $"({this.Left.Value.ToString()})/({this.Right.Value.ToString()})"
+                 elif this.Left.Value.IsFunction() then
+                    $"({this.Left.Value.ToString()})/{this.Right.Value.ToString()}"
+                 elif this.Right.Value.IsFunction() then
+                    $"{this.Left.Value.ToString()}/({this.Right.Value.ToString()})"
+                 else
+                    $"{this.Left.Value.ToString()}/{this.Right.Value.ToString()}"
+        | "^" -> if this.Left.Value.IsFunction() && this.Right.Value.IsFunction() then
+                     $"({this.Left.Value.ToString()})^({this.Right.Value.ToString()})"
+                 elif this.Left.Value.IsFunction() then
+                     $"({this.Left.Value.ToString()})^{this.Right.Value.ToString()}"
+                 elif this.Right.Value.IsFunction() then
+                     $"{this.Left.Value.ToString()}^({this.Right.Value.ToString()})"
+                 else
+                     $"{this.Left.Value.ToString()}^{this.Right.Value.ToString()}"
+        | "|"    -> $"|{this.Right.Value.ToString()}|"
+        | "ln"   -> $"ln({this.Right.Value.ToString()})"
+        | "lg"   -> $"lg({this.Right.Value.ToString()})"
+        | "sin"  -> $"sin({this.Right.Value.ToString()})"
+        | "cos"  -> $"cos({this.Right.Value.ToString()})"
+        | "sqrt" -> $"sqrt({this.Right.Value.ToString()})"
+        | "log2" -> $"log2({this.Right.Value.ToString()})"
+        | "tg"   -> $"tg({this.Right.Value.ToString()})"
+        | "ctg"  -> $"ctg({this.Right.Value.ToString()})"
         | _ -> failwith "Not working"
-
-    override this.ToString() =
-        let result = this.Func2String(this.Operation)
-        result
 
       
 let isNumber (number) =

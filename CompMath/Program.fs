@@ -27,20 +27,20 @@ while true do
 
         try
             let func = convertToFunc text
-            //let der = simplifyFunc (derivativeFunc func)
+            let der = derivativeFunc func
 
             printfn "Function string: %s" (func.ToString())
-           // printfn "Derivative string: %s" (der.ToString())
+            printfn "Derivative string: %s" (der.ToString())
 
             for i in -5.0..0.5..5.0 do
                 printf "y(%f) = %f | " i (calculateFunc func i)
 
                 try
-                    printfn "y' = %f | " (derivative func i)
+                    printf "y' = %f | " (derivative func i)
                 with
                     | NotExist -> printfn "y' = Not exist | "
 
-                //printfn "y'alpha = %f"(calculateFunc der i)
+                printfn "y'alpha = %f" (calculateFunc der i)
         with
         | ex -> printfn "Incorrect input: %s" ex.Message
 

@@ -15,12 +15,15 @@ type Node =
     Right: Option<Node>
     }
 
-    member this.IsFunction() =
-        this.Value.IsNone && this.Operation <> "x" && this.Operation <> "e" && this.Operation <> "|" &&
+    member private this.IsFunction() =
+        this.Value.IsNone && this.Operation <> "x" && this.Operation <> "e" && this.Operation <> "|" && this.Operation <> "^" &&
         this.Operation <> "pi" && not (this.IsComplexFunction())
 
     member this.IsComplexFunction() =
         Array.contains this.Operation funcs
+
+    member this.IsSimple() =
+        Array.contains this.Operation [|"pi"; "e"; ""|]
 
     member this.ToRecord() =
         let getData (value: Option<'a>) =
@@ -38,23 +41,24 @@ type Node =
         | "x" -> "x"
         | "pi" -> "pi"
         | "e" -> "e"
-        //(|1-x|)
         | "+" -> $"{this.Left.Value.ToString()}+{this.Right.Value.ToString()}"
         | "-" -> if this.Right.Value.IsFunction() then
                     $"{this.Left.Value.ToString()}-({this.Right.Value.ToString()})"
                  else
                     $"{this.Left.Value.ToString()}-{this.Right.Value.ToString()}"
-        | "*" -> if this.Left.Value.IsFunction() && this.Right.Value.IsFunction() then
+        | "*" -> if this.Left.Value.IsFunction() && this.Left.Value.Operation <> "/" && this.Left.Value.Operation <> "*" && 
+                    this.Right.Value.IsFunction() && this.Right.Value.Operation <> "/" && this.Right.Value.Operation <> "*" then
                     $"({this.Left.Value.ToString()})*({this.Right.Value.ToString()})"
-                 elif this.Left.Value.IsFunction() then
+                 elif this.Left.Value.IsFunction() && this.Left.Value.Operation <> "/" && this.Left.Value.Operation <> "*" then
                     $"({this.Left.Value.ToString()})*{this.Right.Value.ToString()}"
-                 elif this.Right.Value.IsFunction() then
+                 elif this.Right.Value.IsFunction() && this.Right.Value.Operation <> "/" && this.Right.Value.Operation <> "*" then
                     $"{this.Left.Value.ToString()}*({this.Right.Value.ToString()})"
                  else
                     $"{this.Left.Value.ToString()}*{this.Right.Value.ToString()}"
-        | "/" -> if this.Left.Value.IsFunction() && this.Right.Value.IsFunction() then
+        | "/" -> if this.Left.Value.IsFunction() && this.Left.Value.Operation <> "/" && 
+                    this.Right.Value.IsFunction() then
                     $"({this.Left.Value.ToString()})/({this.Right.Value.ToString()})"
-                 elif this.Left.Value.IsFunction() then
+                 elif this.Left.Value.IsFunction() && this.Left.Value.Operation <> "/" then
                     $"({this.Left.Value.ToString()})/{this.Right.Value.ToString()}"
                  elif this.Right.Value.IsFunction() then
                     $"{this.Left.Value.ToString()}/({this.Right.Value.ToString()})"
@@ -254,9 +258,9 @@ let convertToFunc (line: string) : Node =
         //printfn "l: %d r: %d => %s" l r removed
 
         match removed with 
-        | "x" ->  { Value = None; Operation = "x"; Left = None; Right = None; }
+        | "x" ->  { Value = None; Operation = "x";  Left = None; Right = None; }
         | "pi" -> { Value = None; Operation = "pi"; Left = None; Right = None; }
-        | "e" ->  { Value = None; Operation = "e"; Left = None; Right = None; }
+        | "e" ->  { Value = None; Operation = "e";  Left = None; Right = None; }
         | val1 when isNumber(val1) -> { Value = Some(float val1); Operation = ""; Right = None; Left = None }
         | val1 when r = val1.Length - 1 && val1[r] = '|' && l = 0 && val1[0] = '|' -> 
             { Value = None; Operation = "|"; Right = Some(convert(val1[1..val1.Length - 2])); Left = None; }
@@ -274,68 +278,203 @@ let convertToFunc (line: string) : Node =
     convert (line.Replace(" ", ""))      
 
 let rec calculateFunc (node: Node) (x: float) : float =
-    if node.Value.IsSome then 
-        node.Value.Value
-    else
-        match node.Operation with
-        | "x"  -> x
-        | "pi" -> Math.PI
-        | "e"  -> Math.E
-        | "+"    -> calculateFunc node.Left.Value x + calculateFunc node.Right.Value x
-        | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
-        | "*"    -> calculateFunc node.Left.Value x * calculateFunc node.Right.Value x
-        | "/"    -> calculateFunc node.Left.Value x / calculateFunc node.Right.Value x
-        | "^"    -> Math.Pow(calculateFunc node.Left.Value x, calculateFunc node.Right.Value x)
-        | "|"    -> Math.Abs(calculateFunc node.Right.Value x)
-        | "ln"   -> Math.Log(calculateFunc node.Right.Value x)
-        | "lg"   -> Math.Log10(calculateFunc node.Right.Value x)
-        | "sin"  -> Math.Sin(calculateFunc node.Right.Value x)
-        | "cos"  -> Math.Cos(calculateFunc node.Right.Value x)
-        | "sqrt" -> Math.Sqrt(calculateFunc node.Right.Value x)
-        | "log2" -> Math.Log2(calculateFunc node.Right.Value x)
-        | "tg"   -> Math.Tan(calculateFunc node.Right.Value x)
-        | "ctg"  -> 1. / Math.Tan(calculateFunc node.Right.Value x)
-        | "exp"  -> Math.Exp (calculateFunc node.Right.Value x)
-        | "arcsin"  -> Math.Asin (calculateFunc node.Right.Value x)
-        | "arccos"  -> Math.Acos (calculateFunc node.Right.Value x)
-        | "arctg"  ->  Math.Atan (calculateFunc node.Right.Value x)
-        | "arcctg"  -> Math.PI / 2. - Math.Atan (calculateFunc node.Right.Value x)
-        | "sh"  -> Math.Sinh (calculateFunc node.Right.Value x)
-        | "ch"  -> Math.Cosh (calculateFunc node.Right.Value x)
-        | "th"  -> Math.Tanh (calculateFunc node.Right.Value x)
-        | "cth"  -> 1. / Math.Tanh (calculateFunc node.Right.Value x)
-        | "sch"  -> 1. / Math.Cosh (calculateFunc node.Right.Value x)
-        | "csch"  -> 1. / Math.Sinh (calculateFunc node.Right.Value x)
-        | _ -> failwith "Not available"
-
-
-
-// In developing...
+    match node.Operation with
+    | "" -> node.Value.Value
+    | "x"  -> x
+    | "pi" -> Math.PI
+    | "e"  -> Math.E
+    | "+"    -> calculateFunc node.Left.Value x + calculateFunc node.Right.Value x
+    | "-"    -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
+    | "*"    -> calculateFunc node.Left.Value x * calculateFunc node.Right.Value x
+    | "/"    -> calculateFunc node.Left.Value x / calculateFunc node.Right.Value x
+    | "^"    -> Math.Pow(calculateFunc node.Left.Value x, calculateFunc node.Right.Value x)
+    | "|"    -> Math.Abs(calculateFunc node.Right.Value x)
+    | "ln"   -> Math.Log(calculateFunc node.Right.Value x)
+    | "lg"   -> Math.Log10(calculateFunc node.Right.Value x)
+    | "sin"  -> Math.Sin(calculateFunc node.Right.Value x)
+    | "cos"  -> Math.Cos(calculateFunc node.Right.Value x)
+    | "sqrt" -> Math.Sqrt(calculateFunc node.Right.Value x)
+    | "log2" -> Math.Log2(calculateFunc node.Right.Value x)
+    | "tg"   -> Math.Tan(calculateFunc node.Right.Value x)
+    | "ctg"  -> 1. / Math.Tan(calculateFunc node.Right.Value x)
+    | "exp"  -> Math.Exp (calculateFunc node.Right.Value x)
+    | "arcsin"  -> Math.Asin (calculateFunc node.Right.Value x)
+    | "arccos"  -> Math.Acos (calculateFunc node.Right.Value x)
+    | "arctg"   -> Math.Atan (calculateFunc node.Right.Value x)
+    | "arcctg"  -> Math.PI / 2. - Math.Atan (calculateFunc node.Right.Value x)
+    | "sh"  -> Math.Sinh (calculateFunc node.Right.Value x)
+    | "ch"  -> Math.Cosh (calculateFunc node.Right.Value x)
+    | "th"  -> Math.Tanh (calculateFunc node.Right.Value x)
+    | "cth"  -> 1. / Math.Tanh (calculateFunc node.Right.Value x)
+    | "sch"  -> 1. / Math.Cosh (calculateFunc node.Right.Value x)
+    | "csch"  -> 1. / Math.Sinh (calculateFunc node.Right.Value x)
+    | _ -> failwith "Unknown operation"
 
 let rec derivativeFunc (node: Node) : Node =
+    match node.Operation with
+    | "" | "pi" | "e" -> { Value = Some(0.); Operation = ""; Left = None; Right = None; }
+    | "x" -> { Value = Some(1.); Operation = ""; Left = None; Right = None; }
+    | "+" | "-" -> { Value = None; Operation = node.Operation; Left = Some(derivativeFunc node.Left.Value); Right = Some(derivativeFunc node.Right.Value); }
+    | "*" -> // x * a
+             if node.Left.Value.Operation = "x" && node.Right.Value.IsSimple() then
+                 node.Right.Value
+             // a * x
+             elif node.Right.Value.Operation = "x" && node.Left.Value.IsSimple() then
+                 node.Left.Value
+             // a * f(x)
+             elif (node.Left.Value.IsSimple()) then
+                 { 
+                     Value = None; Operation = "*"; 
+                     Left = Some(derivativeFunc node.Right.Value); 
+                     Right = node.Left;  
+                 }
+             // f(x) * a
+             elif (node.Right.Value.IsSimple()) then
+                 { 
+                     Value = None; Operation = "*"; 
+                     Left = Some(derivativeFunc node.Left.Value); 
+                     Right = node.Right;  
+                 }
+             // f(x) * f(x)
+             else
+                 { 
+                    Value = None; Operation = "+"; 
+                    Left = Some(
+                    { 
+                        Value = None; Operation = "*"; 
+                        Left = Some(derivativeFunc node.Left.Value); 
+                        Right = Some(node.Right.Value); 
+                    }); 
+                    Right = Some(
+                    { 
+                        Value = None; Operation = "*"; 
+                        Left = Some(node.Left.Value); 
+                        Right = Some(derivativeFunc node.Right.Value); 
+                    });  
+                 }
+    //| "/" -> // a/x
+    //         if node.Left.Value.IsSimple() && node.Right.Value.Operation = "x" then
+    //             { 
+    //                 Value = None; Operation = "-"; 
+    //                 Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; }) 
+    //                 Right = Value{};  
+    //             }
+    //         else
+    | "^" -> // x^a
+             if node.Left.Value.Operation = "x" && node.Right.Value.IsSimple() then
+                { 
+                    Value = None; Operation = "*"; 
+                    Left = node.Right; 
+                    Right = Some(
+                    { 
+                        Value = None; Operation = "^"; 
+                        Left = node.Left; 
+                        Right = node.Right;
+                    });  
+                }
+             // a^x
+             elif node.Left.Value.IsSimple() then
+                {
+                    Value = None; Operation = "*"; 
+                    Left = Some(node); 
+                    Right = Some({ Value = None; Operation = "ln"; Left = None; Right = node.Left; });  
+                }
+             // f(x)^a
+             elif node.Right.Value.IsSimple() then
+                {
+                    Value = None; Operation = "*"; 
+                    Left = Some(
+                    {                     
+                        Value = None; Operation = "*"; 
+                        Left = node.Right; 
+                        Right = Some(
+                        { 
+                            Value = None; Operation = "^"; 
+                            Left = node.Left; 
+                            Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; })
+                        });  
+                    } ); 
+                    Right = Some(derivativeFunc node.Left.Value);  
+                }
+             // a^f(x)
+             elif node.Left.Value.IsSimple() then // a^f(x)
+                {
+                    Value = None; Operation = "*"; 
+                    Left = Some(
+                    {                     
+                        Value = None; Operation = "*"; 
+                        Left = node.Right; 
+                        Right = Some(
+                        { 
+                            Value = None; Operation = "^"; 
+                            Left = node.Left; 
+                            Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; })
+                        });  
+                    }); 
+                    Right = Some(derivativeFunc node.Left.Value);  
+                }
+             // f(x)^f(x)
+             else
+                derivativeFunc { 
+                    Value = Some(0.); Operation = "exp"; Left = None; 
+                    Right = Some(
+                    {                     
+                        Value = None; Operation = "*"; 
+                        Left = node.Right; 
+                        Right = Some(
+                        { 
+                            Value = None; Operation = "ln"; Left = None; 
+                            Right = node.Left
+                        });  
+                    });
+                }
+    | "exp" -> // e^x
+               if node.Right.Value.Operation = "x" then
+                   node
+               // e^f(x)
+               else 
+                   { Value = None; Operation = "*"; Left = Some(derivativeFunc node.Right.Value); Right = Some(node); }
+    | "ln" ->  // ln(x)
+               if node.Right.Value.Operation = "x" then
+                   { Value = None; Operation = "/"; Left = Some({ Value = Some(1.); Operation = ""; Left = None; Right = None; }); 
+                     Right = node.Right; }
+               // ln(f(x))
+               else
+                   {
+                       Value = None; Operation = "*";
+                       Left = Some(
+                       { 
+                           Value = None; Operation = "/"; 
+                           Left = Some({ Value = Some(1.); Operation = ""; Left = None; Right = None; }); 
+                           Right = node.Right; 
+                       });
+                       Right = Some(derivativeFunc node.Right.Value)
+                   }
+
+let rec derivativeFunc2 (node: Node) : Node =
     if node.Value.IsSome then 
         { Value = Some(0.); Operation = ""; Right = None; Left = None }
     else
         match node.Operation with
         | "x" -> { Value = Some(1.); Operation = ""; Right = None; Left = None }
         | "^"    -> if node.Right.Value.Value.IsSome then
-                        convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value})*({node.Left.Value})^({node.Right.Value.Value.Value}-1))"
+                        convertToFunc $"(({derivativeFunc2 node.Left.Value})*({node.Right.Value})*({node.Left.Value})^({node.Right.Value.Value.Value}-1))"
                     elif node.Left.Value.Value.IsSome then
-                        convertToFunc $"(({derivativeFunc node.Right.Value})*({node.Left.Value})^({node.Right.Value})*ln({node.Left.Value}))"
+                        convertToFunc $"(({derivativeFunc2 node.Right.Value})*({node.Left.Value})^({node.Right.Value})*ln({node.Left.Value}))"
                     else
                         let hard = convertToFunc $"ln({node.Left.Value})"
                         let symbol = "*"
-                        convertToFunc $"e^(({node.Right.Value})*ln({node.Left.Value}))*({derivativeFunc { Value = None; Operation = symbol; Left = Some(node.Left.Value); Right = Some(hard)}})"
-        | "*"    -> convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value}))+(({node.Left.Value})*({derivativeFunc node.Right.Value}))"
-        | "/"    -> convertToFunc $"(({derivativeFunc node.Left.Value})*({node.Right.Value})-({node.Left.Value})*({derivativeFunc node.Right.Value}))/({node.Right.Value})^2"
-        | "+"    -> convertToFunc $"{derivativeFunc node.Left.Value}+{derivativeFunc node.Right.Value}"
-        | "-"    -> convertToFunc $"{derivativeFunc node.Left.Value}-({derivativeFunc node.Right.Value})"
-        | "ln"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/({node.Right.Value})"
-        | "sin"    -> convertToFunc $"(({derivativeFunc node.Right.Value})*cos({node.Right.Value}))"
-        | "cos"    -> convertToFunc $"(({derivativeFunc node.Right.Value})*(-sin({node.Right.Value})))"
-        | "tg"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(cos({node.Right.Value})^2)"
-        | "ctg"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(-sin({node.Right.Value})^2)"
-        | "sqrt"    -> convertToFunc $"({derivativeFunc node.Right.Value})*1/(2*sqrt({node.Right.Value}))"
+                        convertToFunc $"e^(({node.Right.Value})*ln({node.Left.Value}))*({derivativeFunc2 { Value = None; Operation = symbol; Left = Some(node.Left.Value); Right = Some(hard)}})"
+        | "*"    -> convertToFunc $"(({derivativeFunc2 node.Left.Value})*({node.Right.Value}))+(({node.Left.Value})*({derivativeFunc2 node.Right.Value}))"
+        | "/"    -> convertToFunc $"(({derivativeFunc2 node.Left.Value})*({node.Right.Value})-({node.Left.Value})*({derivativeFunc2 node.Right.Value}))/({node.Right.Value})^2"
+        | "+"    -> convertToFunc $"{derivativeFunc2 node.Left.Value}+{derivativeFunc2 node.Right.Value}"
+        | "-"    -> convertToFunc $"{derivativeFunc2 node.Left.Value}-({derivativeFunc2 node.Right.Value})"
+        | "ln"    -> convertToFunc $"({derivativeFunc2 node.Right.Value})*1/({node.Right.Value})"
+        | "sin"    -> convertToFunc $"(({derivativeFunc2 node.Right.Value})*cos({node.Right.Value}))"
+        | "cos"    -> convertToFunc $"(({derivativeFunc2 node.Right.Value})*(-sin({node.Right.Value})))"
+        | "tg"    -> convertToFunc $"({derivativeFunc2 node.Right.Value})*1/(cos({node.Right.Value})^2)"
+        | "ctg"    -> convertToFunc $"({derivativeFunc2 node.Right.Value})*1/(-sin({node.Right.Value})^2)"
+        | "sqrt"    -> convertToFunc $"({derivativeFunc2 node.Right.Value})*1/(2*sqrt({node.Right.Value}))"
         | _ -> failwith "Not available"
 
 let simplifyFunc (node: Node) =

@@ -12,11 +12,11 @@ type NodeTest() = class
 
     [<Benchmark>]
     member this.Convert() =
-         convertToFunc (this.Expr())
+        derivativeFunc (convertToFunc (this.Expr()))
 
-    [<Benchmark>]
-    member this.Calculate() =
-        calculateFunc node 0.05
+    //[<Benchmark>]
+    //member this.Calculate() =
+    //    calculateFunc node 0.05
 
     //[<Benchmark>]
     //member this.Range() =

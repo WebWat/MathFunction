@@ -38,7 +38,7 @@ while true do
                 try
                     printf "y' = %f | " (derivative func i)
                 with
-                    | NotExist -> printfn "y' = Not exist | "
+                    | NotExist -> printf "y' = Not exist | "
 
                 printfn "y'alpha = %f" (calculateFunc der i)
         with

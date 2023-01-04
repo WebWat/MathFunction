@@ -3,6 +3,7 @@
 open System
 open System.Globalization
 open System.Text.RegularExpressions
+open System.Text
 
 let funcs = [|"ln"; "lg"; "sin"; "cos"; "sqrt"; "log2"; "tg"; "ctg"; "exp"; "arcsin"; 
 "arccos"; "arctg"; "arcctg"; "sh"; "ch"; "th"; "cth"; "sch"; "csch"|]
@@ -534,6 +535,59 @@ let rec derivativeFunc (node: Node) : Node =
                    }
     | _ -> failwith "Unknown operation"
 
+let openBrackets (node: Node) : Node =
+    let func = node.ToString()
+    let ind = func.IndexOf("-(")
+
+    let inner = func[ind + 1..]
+
+    let mutable (l, r) = getBracketsIndexesLeft2Right inner
+    let rfirst = r
+
+    let temp = inner[..r].ToCharArray()
+
+    let mutable inde: (int * int) list = []
+
+    while l <> -1 do
+        temp[l] <- '`'
+        temp[r] <- '`'
+        let (l1, r1) = getBracketsIndexesLeft2Right (new String(temp))
+        l <- l1
+
+        if r <> rfirst && r1 < r then
+            l <- -1
+        else
+            r <- r1
+            l <- l1
+            inde <- List.append inde [(l, r)]
+
+    let builder = new StringBuilder(func[..ind])
+
+    let mutable item = 0
+    let mutable i = ind
+
+    while i < rfirst do
+        if fst inde[item] = i then
+            builder.Append inner[fst inde[item]..snd inde[item]] |> ignore
+            i <- snd inde[item]
+            if item + 1 <> inde.Length then item <- item + 1
+            else ()
+        elif inner[i] = '+' then
+           builder.Append '-' |> ignore
+        elif inner[i] = '-' then
+           builder.Append '+' |> ignore
+        else
+           builder.Append inner[i] |> ignore
+
+        i <- i + 1
+    
+    builder.Append(inner[rfirst + 1..]) |> ignore
+
+    convertToFunc (builder.ToString())
+
+
+
+
 let simplifyFunc (node: Node) =
     let mutable nt = 0.
     let mutable funcList: Node list = []
@@ -609,7 +663,7 @@ let simplifyFunc (node: Node) =
         | _ -> ()
 
 
-    let pushka (node: Node) : float * string =
+    let split (node: Node) : float * string =
         let mutable coef = 1.
         let mutable isNeg = false
         
@@ -631,6 +685,11 @@ let simplifyFunc (node: Node) =
 
         let nod = getWithoutCoef node
 
+        //let mutable str = []
+
+        //let mutable (removed, (l, r)) = removeExtraBrackets (nod.ToString())
+        //let mutable ind = getSymbolIndexLeft2Right l r '*' removed
+
         if isNeg then
             (-coef, nod.ToString())
         else
@@ -642,7 +701,7 @@ let simplifyFunc (node: Node) =
         if funcList.Length = 0 then
             node
         else
-            let arr = List.map (fun x -> pushka x) funcList
+            let arr = List.map (fun x -> split x) funcList
             printfn "converted %A" arr
 
             let rec go (arr: (float * string) list) (item: int)=

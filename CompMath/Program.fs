@@ -10,7 +10,7 @@ while true do
 
     let der = convertToFunc text
     printfn "string: %s" (der.ToString())
-    printfn "Derivative string: %s" ((simplifyFunc der).ToString())
+    printfn "Derivative string: %s" ((openBrackets der).ToString())
     //if text = "clear" then
     //    let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
     //    printfn "Before: %.1f KB" start

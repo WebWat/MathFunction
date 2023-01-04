@@ -35,7 +35,7 @@ type Node =
         | "pi" -> "pi"
         | "e" -> "e"
         | "+" -> $"{this.Left.Value.ToString()}+{this.Right.Value.ToString()}"
-        | "-" -> if this.Right.Value.IsFunction() then
+        | "-" -> if this.Right.Value.IsFunction() && this.Right.Value.Operation <> "/" && this.Right.Value.Operation <> "*" then
                     $"{this.Left.Value.ToString()}-({this.Right.Value.ToString()})"
                  else
                     $"{this.Left.Value.ToString()}-{this.Right.Value.ToString()}"
@@ -219,10 +219,10 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
 
     // Not sure
     // If complex function (cos, sin, log, ...) then -sin => -1 * sin
-    if line[0] = '-' && symbol = '*' && Regex.IsMatch(string line[1], @"[a-z]") then
-        ("-1", line[1..])
+    //if line[0] = '-' && symbol = '*' && Regex.IsMatch(string line[1], @"[a-z]") then
+    //    ("-1", line[1..])
     // If symbol not found
-    elif index.Force() = -1 then
+    if index.Force() = -1 then
         ("-", "-")
     // If -number
     elif symbol = '-' && index.Force() = 0 then
@@ -532,10 +532,11 @@ let rec derivativeFunc (node: Node) : Node =
                            Right = Some({ Value = None; Operation = "sin"; Left = None; Right = node.Right; });
                        });
                    }
+    | _ -> failwith "Unknown operation"
 
 let simplifyFunc (node: Node) =
-    let mutable clear = true
     let mutable nt = 0.
+    let mutable funcList: Node list = []
 
     let change (op: string) (number: float) =
         if op = "-" then
@@ -543,46 +544,134 @@ let simplifyFunc (node: Node) =
         else
             number
 
-    let rec middle (node: Node) : Node =
+    let changeFunc (op: string) (node: Node) =
+        if op = "-" then
+            { Value = None; Operation = "-"; Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; }); Right = Some(node); }
+        else
+            node
+
+    let rec sumNumbers (node: Node) : Node =
         match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
         | (true, true, val1) when val1 = "+" || val1 = "-" -> 
-            if node.Left.Value.Value.IsSome then
+            if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
+                let sum = node.Left.Value.Value.Value + change node.Operation node.Right.Value.Value.Value
+                nt <- nt + sum
+                { Value = Some(0.); Operation = ""; Left = None; Right = None}
+            // -x = 0 - x
+            elif node.Left.Value.Value.IsSome && node.Operation = "-" then
                 nt <- nt + node.Left.Value.Value.Value
-                node.Right.Value
+                { Value = None; Operation = node.Operation; Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; }); 
+                  Right = Some(sumNumbers node.Right.Value) }
+            elif node.Left.Value.Value.IsSome then
+                nt <- nt + node.Left.Value.Value.Value
+                sumNumbers { Value = None; Operation = node.Right.Value.Operation; Left = node.Right.Value.Left; Right = node.Right.Value.Right }
             elif node.Right.Value.Value.IsSome then
                 nt <- nt + change node.Operation node.Right.Value.Value.Value
-                node.Left.Value
+                sumNumbers { Value = None; Operation = node.Left.Value.Operation; Left = node.Left.Value.Left; Right = node.Left.Value.Right }
             else
-                { Value = None; Operation = node.Operation; Left = Some(middle node.Left.Value); Right = Some(middle node.Right.Value) }
-        | (false, true, _) -> { Value = None; Operation = node.Operation; Left = None; Right = Some(middle node.Right.Value) }
+                { Value = None; Operation = node.Operation; Left = Some(sumNumbers node.Left.Value); Right = Some(sumNumbers node.Right.Value) }
+        | _ -> node
+      
+    let rec clear (node: Node) : Node =
+        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+        | (true, true, val1) when val1 = "+" || val1 = "-" -> 
+            if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
+                { Value = Some(0.); Operation = ""; Left = None; Right = None}
+            elif node.Left.Value.Value.IsSome && node.Left.Value.Value.Value <> 0 && node.Operation <> "-" then
+                clear { Value = None; Operation = node.Right.Value.Operation; Left = node.Right.Value.Left; Right = node.Right.Value.Right }
+            elif node.Right.Value.Value.IsSome then
+                clear { Value = None; Operation = node.Left.Value.Operation; Left = node.Left.Value.Left; Right = node.Left.Value.Right }
+            else
+                { Value = None; Operation = node.Operation; Left = Some(clear node.Left.Value); Right = Some(clear node.Right.Value) }
         | _ -> node
 
-    let rec simple (node: Node) : Node =
-        match (node.Left.IsSome, node.Right.IsSome) with
-        | (true, true) -> if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
-                              clear <- false
-                              { Value = Some(calculateFunc node 0); Operation = ""; Left = None; Right = None }
-                          elif node.Operation = "*" && ((node.Left.Value.Value.IsSome && node.Left.Value.Value.Value = 0.) || 
-                              (node.Right.Value.Value.IsSome && node.Right.Value.Value.Value = 0.)) then
-                              clear <- false
-                              { Value = Some(0.); Operation = ""; Left = None; Right = None }
-                              // ^^^^^^^^^^
-                          elif (node.Operation = "*" && node.Left.Value.Value.IsSome && node.Left.Value.Value.Value = 1.) then
-                              clear <- false
-                              node.Right.Value 
-                          elif (node.Operation = "*" && node.Right.Value.Value.IsSome && node.Right.Value.Value.Value = 1.) then
-                              clear <- false
-                              node.Left.Value
-                          else
-                              { Value = None; Operation = node.Operation; Left = Some(simple node.Left.Value); Right = Some(simple node.Right.Value) }
-        | (false, true) -> { Value = None; Operation = node.Operation; Left = None; Right = Some(simple node.Right.Value) }
-        | _ -> node
-
-    let rec clearFunc (result: Node) =
-        if clear then
+    let rec clearFunc (last: Node) (result: Node) =
+        if last.ToString() = result.ToString() then
             result
         else
-            clear <- true
-            clearFunc (simple result)
+            clearFunc result (clear result)
+
+    let rec sumFunc (node: Node) =
+        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+        | (true, true, val1) when val1 = "+" || val1 = "-" -> 
+            if (node.Left.Value.Operation = "*" || node.Left.Value.Operation = "^" || node.Left.Value.Operation = "x" || node.Left.Value.IsComplexFunction()) && 
+               (node.Right.Value.Operation = "*" || node.Right.Value.Operation = "^" || node.Right.Value.Operation = "x" || node.Right.Value.IsComplexFunction()) then
+                funcList <- List.append funcList [changeFunc val1 node.Right.Value] |> List.append [node.Left.Value]
+            elif node.Left.Value.Operation = "*" || node.Left.Value.Operation = "^" || node.Left.Value.Operation = "x" || node.Left.Value.IsComplexFunction() then
+                funcList <- List.append funcList [node.Left.Value]
+                sumFunc node.Right.Value
+            elif node.Right.Value.Operation = "*" || node.Right.Value.Operation = "^" || node.Right.Value.Operation = "x" || node.Right.Value.IsComplexFunction() then
+                funcList <- List.append funcList [changeFunc val1 node.Right.Value]
+                sumFunc node.Left.Value
+            else
+                sumFunc node.Left.Value
+                sumFunc node.Right.Value
+        | _ -> ()
+
+
+    let pushka (node: Node) : float * string =
+        let mutable coef = 1.
+        let mutable isNeg = false
         
-    clearFunc (simple node)
+        let rec getWithoutCoef (node: Node) =
+            match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+            | (true, true, "-") -> 
+                isNeg <- not isNeg
+                getWithoutCoef node.Right.Value
+            | (true, true, "*") -> 
+                if node.Left.Value.Value.IsSome then
+                    coef <- node.Left.Value.Value.Value
+                    node.Right.Value
+                elif node.Right.Value.Value.IsSome then
+                    coef <- node.Right.Value.Value.Value
+                    node.Left.Value
+                else
+                    { Value = None; Operation = node.Operation; Left = Some(getWithoutCoef node.Left.Value); Right = Some(getWithoutCoef node.Right.Value) }
+            | _ -> node
+
+        let nod = getWithoutCoef node
+
+        if isNeg then
+            (-coef, nod.ToString())
+        else
+            (coef, nod.ToString())
+            
+    let clearSumFunc (node: Node) =
+        sumFunc node
+
+        if funcList.Length = 0 then
+            node
+        else
+            let arr = List.map (fun x -> pushka x) funcList
+            printfn "converted %A" arr
+
+            let rec go (arr: (float * string) list) (item: int)=
+                if item = arr.Length then 
+                    arr
+                else
+                    let same = List.filter (fun x -> snd arr[item] = snd x) arr
+                    let notsame = List.filter (fun x -> snd arr[item] <> snd x) arr
+                    let sum = (List.sumBy (fun x -> fst x) same, snd same[0])
+
+                    if fst sum <> 0 then
+                        go (List.append [sum] notsame) (item + 1)
+                    else
+                        go notsame (item)
+
+            let data = go arr 0
+            printfn "arr: %A" data
+
+            let func = String.Join('+', (List.map (fun x -> if fst x = 1. then $"{snd x}" else $"({fst x})*({snd x})" ) data))
+            convertToFunc func
+
+    let pre = sumNumbers node
+    let result = clearFunc pre (clear pre)
+    let data = clearSumFunc result
+
+    printfn "data: %s" (data.ToString())
+    printfn "nt: %f" nt
+
+    if nt <> 0 then
+        { Value = None; Operation = "+"; Left = Some(data); Right = Some({ Value = Some(nt); Operation = ""; Left = None; Right = None; }) }
+    else
+        data

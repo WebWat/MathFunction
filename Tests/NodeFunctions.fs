@@ -102,6 +102,19 @@ let ``Remove extra brackets`` () =
     Assert.Equal("(x+2*(x+3))+(x+3)", fst (removeExtraBrackets "(x+2*(x+3))+(x+3)"))
     Assert.Equal("(x+2*(x+3))+(x+3)", fst (removeExtraBrackets "((x+2*(x+3))+(x+3))"))
 
+//[<Fact>]
+//let ``Open brackets`` () =
+    // Default
+    //Assert.Equal("x+2", fst (removeExtraBrackets "x+2"))
+    //Assert.Equal("x+2", fst (removeExtraBrackets "(x+2)"))
+    //Assert.Equal("x+2", fst (removeExtraBrackets "((x+2))"))
+    //Assert.Equal("x+2", fst (removeExtraBrackets "(((x+2)))"))
+
+    //// Complex
+    //Assert.Equal("(x+2)+(x+3)", fst (removeExtraBrackets "(x+2)+(x+3)"))
+    //Assert.Equal("(x+2*(x+3))+(x+3)", fst (removeExtraBrackets "(x+2*(x+3))+(x+3)"))
+    //Assert.Equal("(x+2*(x+3))+(x+3)", fst (removeExtraBrackets "((x+2*(x+3))+(x+3))"))
+
 
 
 

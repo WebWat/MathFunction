@@ -10,9 +10,9 @@ type NodeTest() = class
 
     member private this.Expr () = "(-1)*(sin(2*x)-2*sin(x))/(x*ln(cos(5*x)))"
 
-    [<Benchmark>]
-    member this.Convert() =
-        derivativeFunc (convertToFunc (this.Expr()))
+    //[<Benchmark>]
+    //member this.Convert() =
+    //    derivativeFunc (convertToFunc (this.Expr()))
 
     //[<Benchmark>]
     //member this.Calculate() =

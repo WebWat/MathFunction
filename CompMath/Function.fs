@@ -3,10 +3,6 @@
 open System
 open System.Globalization
 open System.Text.RegularExpressions
-open System.Text
-
-let funcs = [|"ln"; "lg"; "sin"; "cos"; "sqrt"; "log2"; "tg"; "ctg"; "exp"; "arcsin"; 
-"arccos"; "arctg"; "arcctg"; "sh"; "ch"; "th"; "cth"; "sch"; "csch"|]
 
 type Node = 
     {
@@ -16,128 +12,150 @@ type Node =
     Right: Option<Node>
     }
 
-    member private this.IsFunction() =
-        this.Value.IsNone && this.Operation <> "x" && this.Operation <> "e" && this.Operation <> "|" && this.Operation <> "^" &&
-        this.Operation <> "pi" && not (this.IsComplexFunction())
+type Increment = 
+    | Neg = -1
+    | Pos = 1
 
-    member this.IsComplexFunction() =
-        Array.contains this.Operation funcs
+(*
+    Basic mathematical functions, constants, and operations.
+*)
+let funcs = [|"ln"; "lg"; "sin"; "cos"; "sqrt"; "log2"; "tg"; "ctg"; "exp"; "arcsin"; 
+"arccos"; "arctg"; "arcctg"; "sh"; "ch"; "th"; "cth"; "sch"; "csch"|]
 
-    member this.IsSimple() =
-        Array.contains this.Operation [|"pi"; "e"; ""|]
+let consts = [|"pi"; "e"; ""|]
 
-    override this.ToString() =
-        match this.Operation with
-        | "" -> if this.Value.Value < 0. then
-                    $"({this.Value.Value})"
+let symbols = [|'+';'-';'*';'/';'^'|]
+
+
+let isComplexFunction (node: Node) =
+    Array.contains node.Operation funcs
+
+let isConst (node: Node) =
+    Array.contains node.Operation consts
+    
+let toString (node: Node) =
+    let needBrackets (node: Node) =
+        node.Operation <> "x" && node.Operation <> "|" && node.Operation <> "^" &&
+        not (isConst node) && not (isComplexFunction node)
+
+    let rec convert2str node =
+        match node.Operation with
+        | "" -> if node.Value.Value < 0. then
+                    $"({node.Value.Value})"
                 else
-                    string this.Value.Value
+                    string node.Value.Value
         | "x" -> "x"
         | "pi" -> "pi"
         | "e" -> "e"
-        | "+" -> $"{this.Left.Value.ToString()}+{this.Right.Value.ToString()}"
-        | "-" -> if this.Right.Value.IsFunction() && this.Right.Value.Operation <> "/" && this.Right.Value.Operation <> "*" then
-                    $"{this.Left.Value.ToString()}-({this.Right.Value.ToString()})"
+        | "+" -> $"{convert2str node.Left.Value}+{convert2str node.Right.Value}"
+        | "-" -> if needBrackets node.Right.Value &&
+                    // If meet the operation of division or multiplication -> do not put brackets
+                    node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
+                    $"{convert2str node.Left.Value}-({convert2str node.Right.Value})"
                  else
-                    $"{this.Left.Value.ToString()}-{this.Right.Value.ToString()}"
-        | "*" -> if this.Left.Value.IsFunction() && this.Left.Value.Operation <> "/" && this.Left.Value.Operation <> "*" && 
-                    this.Right.Value.IsFunction() && this.Right.Value.Operation <> "/" && this.Right.Value.Operation <> "*" then
-                    $"({this.Left.Value.ToString()})*({this.Right.Value.ToString()})"
-                 elif this.Left.Value.IsFunction() && this.Left.Value.Operation <> "/" && this.Left.Value.Operation <> "*" then
-                    $"({this.Left.Value.ToString()})*{this.Right.Value.ToString()}"
-                 elif this.Right.Value.IsFunction() && this.Right.Value.Operation <> "/" && this.Right.Value.Operation <> "*" then
-                    $"{this.Left.Value.ToString()}*({this.Right.Value.ToString()})"
+                    $"{convert2str node.Left.Value}-{convert2str node.Right.Value}"
+        | "*" -> if needBrackets node.Left.Value &&  node.Left.Value.Operation <> "/" &&  node.Left.Value.Operation <> "*" && 
+                    needBrackets node.Right.Value && node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
+                    $"({convert2str node.Left.Value})*({convert2str node.Right.Value})"
+                 elif needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && node.Left.Value.Operation <> "*" then
+                    $"({convert2str node.Left.Value})*{convert2str node.Right.Value}"
+                 elif needBrackets node.Right.Value && node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
+                    $"{convert2str node.Left.Value}*({convert2str node.Right.Value})"
                  else
-                    $"{this.Left.Value.ToString()}*{this.Right.Value.ToString()}"
-        | "/" -> if this.Left.Value.IsFunction() && this.Left.Value.Operation <> "/" && this.Left.Value.Operation <> "*" && 
-                    this.Right.Value.IsFunction() then
-                    $"({this.Left.Value.ToString()})/({this.Right.Value.ToString()})"
-                 elif this.Left.Value.IsFunction() && this.Left.Value.Operation <> "/" && this.Left.Value.Operation <> "*" then
-                    $"({this.Left.Value.ToString()})/{this.Right.Value.ToString()}"
-                 elif this.Right.Value.IsFunction() then
-                    $"{this.Left.Value.ToString()}/({this.Right.Value.ToString()})"
+                    $"{convert2str node.Left.Value}*{convert2str node.Right.Value}"
+        | "/" -> if needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && 
+                    needBrackets node.Right.Value && node.Left.Value.Operation <> "*" then
+                    $"({convert2str node.Left.Value})/({convert2str node.Right.Value})"
+                 elif needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && node.Left.Value.Operation <> "*" then
+                    $"({convert2str node.Left.Value})/{convert2str node.Right.Value}"
+                 elif needBrackets node.Right.Value then
+                    $"{convert2str node.Left.Value}/({convert2str node.Right.Value})"
                  else
-                    $"{this.Left.Value.ToString()}/{this.Right.Value.ToString()}"
-        | "^" -> if this.Left.Value.IsFunction() && this.Right.Value.IsFunction() then
-                     $"({this.Left.Value.ToString()})^({this.Right.Value.ToString()})"
-                 elif this.Left.Value.IsFunction() then
-                     $"({this.Left.Value.ToString()})^{this.Right.Value.ToString()}"
-                 elif this.Right.Value.IsFunction() then
-                     $"{this.Left.Value.ToString()}^({this.Right.Value.ToString()})"
+                    $"{convert2str node.Left.Value}/{convert2str node.Right.Value}"
+        | "^" -> if needBrackets node.Left.Value && needBrackets node.Right.Value then
+                     $"({convert2str node.Left.Value})^({convert2str node.Right.Value})"
+                 elif needBrackets node.Left.Value then
+                     $"({convert2str node.Left.Value})^{convert2str node.Right.Value}"
+                 elif needBrackets node.Right.Value then
+                     $"{convert2str node.Left.Value}^({convert2str node.Right.Value})"
                  else
-                     $"{this.Left.Value.ToString()}^{this.Right.Value.ToString()}"
-        | "|"    -> $"|{this.Right.Value.ToString()}|"
-        | val1 when Array.exists (fun x -> val1 = x) funcs -> $"{Array.find (fun x -> val1 = x) funcs}({this.Right.Value.ToString()})"
-        | _ -> failwith "Not working"
+                     $"{convert2str node.Left.Value}^{convert2str node.Right.Value}"
+        | "|"    -> $"|{convert2str node.Right.Value}|"
+        | val1 when Array.exists (fun x -> val1 = x) funcs -> $"{Array.find (fun x -> val1 = x) funcs}({convert2str node.Right.Value})"
+        | _ -> failwith "[toString] Unknown function, operation, or constant!"
 
-let isNumber (number) =
-    let mutable temp = 0.0
-    // Parse with a dot
-    Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
+    convert2str node
 
-// Get the index of the nearest bracket or module
-let getClosest rightBracket leftModule =
+// Get the index of the nearest bracket or module.
+let private getClosest rightBracket leftModule =
     if rightBracket <> -1 && (leftModule = -1 || 
-        leftModule <> -1 && rightBracket > leftModule) then 
-        (rightBracket, ')')
+       leftModule <> -1 && rightBracket > leftModule) then 
+       (rightBracket, ')')
     elif leftModule <> -1 && (rightBracket = -1  || 
-            rightBracket <> -1 && leftModule > rightBracket) then 
-            (leftModule, '|')
+         rightBracket <> -1 && leftModule > rightBracket) then 
+         (leftModule, '|')
     else (-1, '-')
 
-let rec findBracketsIndexes (line: string) total current inc =
-    if total = 0 then current - inc
-    elif line[current] = '(' then findBracketsIndexes line (total - 1) (current + inc) inc
-    elif line[current] = ')' then findBracketsIndexes line (total + 1) (current + inc) inc
-    else findBracketsIndexes line total (current + inc) inc
+// Returns the first outer brackets indexes.
+let rec private findBracketsIndexes (line: string) (total: int) (current: int) (inc: Increment) =
+    if total = 0 then current - int inc
+    elif line[current] = '(' then findBracketsIndexes line (total - 1) (current + int inc) inc
+    elif line[current] = ')' then findBracketsIndexes line (total + 1) (current + int inc) inc
+    else findBracketsIndexes line total (current + int inc) inc
 
-let rec findModulesIndexes (line: string) total current lastClose inc =
+// Returns the first outer modules indexes.
+let rec findModulesIndexes (line: string) (total: int) (current: int) (lastClose: bool) (inc: Increment) =
     if total = 0 then
-        current - inc
+        current - int inc
     elif current = line.Length - 1 || current = 0 then
         current
     elif line[current] = '|' then
         if not lastClose && line[current - 1] <> ')' &&  Regex.IsMatch(string line[current - 1], @"\W") then
-            findModulesIndexes line (total + 1) (current + inc) false inc
+            findModulesIndexes line (total + 1) (current + int inc) false inc
         else
-            findModulesIndexes line (total - 1) (current + inc) true inc
+            findModulesIndexes line (total - 1) (current + int inc) true inc
     else 
-        findModulesIndexes line total (current + inc) false inc
+        findModulesIndexes line total (current + int inc) false inc
 
-// Get the bracket or module indexes.
+// Looking for a symbol outside the brackets.
+let rec lookOutside (line: string) (symbol: char) (leftBracket: int) (rightBracket: int) (current: int) (inc: Increment) : int =
+    if (leftBracket, rightBracket) = (-1, -1) then 
+        if inc = Increment.Neg then line.LastIndexOf(symbol)
+        else line.IndexOf(symbol)
+    elif current = -1 || current = line.Length then 
+        -1
+    else
+        if line[current] = symbol then
+            current
+        // Skip inner
+        elif inc = Increment.Neg && current = rightBracket then
+            lookOutside line symbol leftBracket rightBracket (current - (rightBracket - leftBracket) + int inc) inc
+        // Skip inner
+        elif inc = Increment.Pos && current = leftBracket then
+            lookOutside line symbol leftBracket rightBracket (current + (rightBracket - leftBracket) + int inc) inc
+        else
+            lookOutside line symbol leftBracket rightBracket (current + int inc) inc
+
+// Get the bracket indexes (from the right side of the expression).
 let getBracketsIndexesRight2Left (line: string) =
     let (left, operation) = getClosest (line.IndexOf '(') (line.IndexOf '|')
 
     match operation with
-    | ')' -> (left, findBracketsIndexes line -1 (left + 1) 1)
-    | '|' -> (left, findModulesIndexes line 1 (left + 1) false 1)
+    | ')' -> (left, findBracketsIndexes line -1 (left + 1) Increment.Pos)
+    | '|' -> (left, findModulesIndexes line 1 (left + 1) false Increment.Pos)
     | _ -> (-1, -1)
 
+// Get the bracket indexes (from the left side of the expression).
 let getBracketsIndexesLeft2Right (line: string) =
     let (right, operation) = getClosest (line.LastIndexOf ')') (line.LastIndexOf '|')
 
     match operation with
-    | ')' -> (findBracketsIndexes line 1 (right - 1) -1, right)
-    | '|' -> (findModulesIndexes line -1 (right - 1) true -1, right)
+    | ')' -> (findBracketsIndexes line 1 (right - 1) Increment.Neg, right)
+    | '|' -> (findModulesIndexes line -1 (right - 1) true Increment.Neg, right)
     | _ -> (-1, -1)
 
 // Gets the character index, after passing various checks.
-let getSymbolIndexRight2Left (left: int) (right: int) (symbol: char) (line: string)  =
-    // Looking for a symbol outside the brackets
-    let rec lookOutside (current: int) : int =
-        if (left, right) = (-1, -1) then 
-            line.IndexOf(symbol)
-        elif current = line.Length then 
-            -1
-        else
-            if line[current] = symbol then
-                current
-            // Skip inner
-            elif current = left then
-                lookOutside (current + right - left + 1)
-            else
-                lookOutside (current + 1)
-    
+let getSymbolIndexRight2Left (leftBracket: int) (rightBracket: int) (symbol: char) (line: string)  =
     // Check that the symbol is not in other brackets
     let rec checkRightSide (line: string) (rLast: int) (rCurrent: int) index =
         let subLine = line[rLast + 2..]
@@ -152,30 +170,15 @@ let getSymbolIndexRight2Left (left: int) (right: int) (symbol: char) (line: stri
         else
             checkRightSide subLine right (right + rCurrent + 2) index
     
-    let index = lookOutside 0
+    let index = lookOutside line symbol leftBracket rightBracket 0 Increment.Pos
 
     // If found symbol beyond expression
-    if right <> -1 && index > right + 1 then
-        checkRightSide line right right index
+    if rightBracket <> -1 && index > rightBracket + 1 then
+        checkRightSide line rightBracket rightBracket index
     else
         index
 
-let getSymbolIndexLeft2Right (left: int) (right: int) (symbol: char) (line: string)  =
-    // Looking for a symbol outside the brackets
-    let rec lookOutside (current: int) : int =
-        if (left, right) = (-1, -1) then 
-            line.LastIndexOf(symbol)
-        elif current < 0 then 
-            -1
-        else
-            if line[current] = symbol then
-                current
-            // Skip inner
-            elif current = right then
-                lookOutside (current - (right - left) - 1)
-            else
-                lookOutside (current - 1)
-    
+let getSymbolIndexLeft2Right (leftBracket: int) (rightBracket: int) (symbol: char) (line: string)  =
     // Check that the symbol is not in other brackets
     let rec checkLeftSide (line: string) (lLast: int) index =
         let subLine = line[..lLast - 2]
@@ -188,11 +191,11 @@ let getSymbolIndexLeft2Right (left: int) (right: int) (symbol: char) (line: stri
         else
             checkLeftSide subLine left index
     
-    let index = lookOutside (line.Length - 1)
+    let index = lookOutside line symbol leftBracket rightBracket (line.Length - 1) Increment.Neg
 
     // If found symbol beyond expression
-    if left <> -1 && index < left && index <> 0 then
-        checkLeftSide line left index
+    if leftBracket <> -1 && index < leftBracket && index <> 0 then
+        checkLeftSide line leftBracket index
     else
         index
 
@@ -218,10 +221,6 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
 
     let comp = lazy(line[rbracket..rbracket + 1].LastIndexOf symbol)
 
-    // Not sure
-    // If complex function (cos, sin, log, ...) then -sin => -1 * sin
-    //if line[0] = '-' && symbol = '*' && Regex.IsMatch(string line[1], @"[a-z]") then
-    //    ("-1", line[1..])
     // If symbol not found
     if index.Force() = -1 then
         ("-", "-")
@@ -235,21 +234,27 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
     else
         (line[..index.Force() - 1], line[index.Force() + 1..])
 
-// Converts a function represented in a string into a recursive Node entry.
-let convertToFunc (line: string) : Node =
-    let symbols = [|'+';'-';'*';'/';'^'|]
-
-    // Looking for symbols which can split the function
-    let rec searchSymbol (operands: string * string) (line: string) (brackets: int * int) (item: int) =
+// Looking for symbols which can split the function.
+let rec searchSymbol (operands: string * string) (line: string) (brackets: int * int) (item: int) =
+    if item = symbols.Length then
+        failwith "Unknow operation"
+    else
         match operands with 
         | ("-", "-") -> searchSymbol (breakLine brackets (symbols[item + 1]) line) line brackets (item + 1)
         | (val1, val2) -> (val1, val2, item)
+
+// Converts a function represented in a string into a recursive Node entry.
+let convertToFunc (line: string) : Node =
+    let isNumber (number: string) =
+        let mutable temp = 0.0
+        // Parse with a dot
+        Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
 
     let rec convert (line: string) =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
-        //printfn "l: %d r: %d => %s" l r removed
+        printfn "l: %d r: %d => %s" l r removed
 
         match removed with 
         | "x" ->  { Value = None; Operation = "x";  Left = None; Right = None; }
@@ -302,435 +307,4 @@ let rec calculateFunc (node: Node) (x: float) : float =
     | "cth"  -> 1. / Math.Tanh (calculateFunc node.Right.Value x)
     | "sch"  -> 1. / Math.Cosh (calculateFunc node.Right.Value x)
     | "csch"  -> 1. / Math.Sinh (calculateFunc node.Right.Value x)
-    | _ -> failwith "Unknown operation"
-
-let rec derivativeFunc (node: Node) : Node =
-    match node.Operation with
-    | "" | "pi" | "e" -> { Value = Some(0.); Operation = ""; Left = None; Right = None; }
-    | "x" -> { Value = Some(1.); Operation = ""; Left = None; Right = None; }
-    | "+" | "-" -> { Value = None; Operation = node.Operation; Left = Some(derivativeFunc node.Left.Value); Right = Some(derivativeFunc node.Right.Value); }
-    | "*" -> // x * a
-             if node.Left.Value.Operation = "x" && node.Right.Value.IsSimple() then
-                 node.Right.Value
-             // a * x
-             elif node.Right.Value.Operation = "x" && node.Left.Value.IsSimple() then
-                 node.Left.Value
-             // a * f(x)
-             elif (node.Left.Value.IsSimple()) then
-                 { 
-                     Value = None; Operation = "*"; 
-                     Left = Some(derivativeFunc node.Right.Value); 
-                     Right = node.Left;  
-                 }
-             // f(x) * a
-             elif (node.Right.Value.IsSimple()) then
-                 { 
-                     Value = None; Operation = "*"; 
-                     Left = Some(derivativeFunc node.Left.Value); 
-                     Right = node.Right;  
-                 }
-             // f(x) * f(x)
-             else
-                 { 
-                    Value = None; Operation = "+"; 
-                    Left = Some(
-                    { 
-                        Value = None; Operation = "*"; 
-                        Left = Some(derivativeFunc node.Left.Value); 
-                        Right = Some(node.Right.Value); 
-                    }); 
-                    Right = Some(
-                    { 
-                        Value = None; Operation = "*"; 
-                        Left = Some(node.Left.Value); 
-                        Right = Some(derivativeFunc node.Right.Value); 
-                    });  
-                 }
-    | "/" -> // a/x
-             if node.Left.Value.IsSimple() && node.Right.Value.Operation = "x" then
-                 { 
-                     Value = None; Operation = "-"; 
-                     Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; }) 
-                     Right = Some(
-                     { 
-                         Value = None; Operation = "/"; 
-                         Left = node.Left
-                         Right = Some(
-                         { 
-                            Value = None; Operation = "^"; Left = Some({ Value = None; Operation = "x"; Left = None; Right = None; }); 
-                            Right = Some({ Value = Some(2.); Operation = ""; Left = None; Right = None; }); 
-                         });
-                     });  
-                 }
-             // x/a
-             elif node.Right.Value.IsSimple() && node.Left.Value.Operation = "x" then
-                { 
-                    Value = None; Operation = "/"; 
-                    Left = Some({ Value = Some(1.); Operation = ""; Left = None; Right = None; });
-                    Right = node.Right
-                }
-             // a/f(x)
-             elif node.Left.Value.IsSimple() then
-                 { 
-                     Value = None; Operation = "-"; 
-                     Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; }) 
-                     Right = Some(
-                     { 
-                         Value = None; Operation = "/"; 
-                         Left = Some(derivativeFunc node.Right.Value)
-                         Right = Some(
-                         { 
-                            Value = None; Operation = "^"; Left = node.Right; 
-                            Right = Some({ Value = Some(2.); Operation = ""; Left = None; Right = None; }); 
-                         });
-                     });  
-                 }
-             // f(x)/a
-             elif node.Right.Value.IsSimple() then
-                 {
-                    Value = None; Operation = "*"; 
-                    Left = Some({ 
-                        Value = None; Operation = "/"; 
-                        Left = Some({ Value = Some(1.); Operation = ""; Left = None; Right = None; });
-                        Right = node.Right
-                    });
-                    Right = Some(derivativeFunc node.Left.Value)
-                 }
-             // f(x)/f(x)
-             else
-                 { 
-                     Value = None; Operation = "/"; 
-                     Left = Some(
-                     { 
-                         Value = None; Operation = "-"; 
-                         Left = Some({ Value = Some(0.); Operation = "*"; Left = Some(derivativeFunc node.Left.Value); Right = node.Right; }) 
-                         Right = Some({ Value = Some(0.); Operation = "*"; Left = node.Left; Right = Some(derivativeFunc node.Right.Value); }) 
-                     }
-                     );
-                     Right = Some(
-                     { 
-                         Value = None; Operation = "^"; 
-                         Left = node.Right
-                         Right = Some({ Value = Some(2.); Operation = ""; Left = None; Right = None; });
-                     });  
-                 }
-    | "^" -> // x^a
-             if node.Left.Value.Operation = "x" && node.Right.Value.IsSimple() then
-                { 
-                    Value = None; Operation = "*"; 
-                    Left = node.Right; 
-                    Right = Some(
-                    { 
-                        Value = None; Operation = "^"; 
-                        Left = node.Left; 
-                        Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; });
-                    });  
-                }
-             // a^x
-             elif node.Left.Value.IsSimple() then
-                {
-                    Value = None; Operation = "*"; 
-                    Left = Some(node); 
-                    Right = Some({ Value = None; Operation = "ln"; Left = None; Right = node.Left; });  
-                }
-             // f(x)^a
-             elif node.Right.Value.IsSimple() then
-                {
-                    Value = None; Operation = "*"; 
-                    Left = Some(
-                    {                     
-                        Value = None; Operation = "*"; 
-                        Left = node.Right; 
-                        Right = Some(
-                        { 
-                            Value = None; Operation = "^"; 
-                            Left = node.Left; 
-                            Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; })
-                        });  
-                    } ); 
-                    Right = Some(derivativeFunc node.Left.Value);  
-                }
-             // a^f(x)
-             elif node.Left.Value.IsSimple() then
-                {
-                    Value = None; Operation = "*"; 
-                    Left = Some(
-                    {                     
-                        Value = None; Operation = "*"; 
-                        Left = node.Right; 
-                        Right = Some(
-                        { 
-                            Value = None; Operation = "^"; 
-                            Left = node.Left; 
-                            Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; })
-                        });  
-                    }); 
-                    Right = Some(derivativeFunc node.Left.Value);  
-                }
-             // f(x)^f(x)
-             else
-                derivativeFunc { 
-                    Value = Some(0.); Operation = "exp"; Left = None; 
-                    Right = Some(
-                    {                     
-                        Value = None; Operation = "*"; 
-                        Left = node.Right; 
-                        Right = Some(
-                        { 
-                            Value = None; Operation = "ln"; Left = None; 
-                            Right = node.Left
-                        });  
-                    });
-                }
-    | "exp" -> // e^x
-               if node.Right.Value.Operation = "x" then
-                   node
-               // e^f(x)
-               else 
-                   { Value = None; Operation = "*"; Left = Some(derivativeFunc node.Right.Value); Right = Some(node); }
-    | "ln" ->  // ln(x)
-               if node.Right.Value.Operation = "x" then
-                   { Value = None; Operation = "/"; Left = Some({ Value = Some(1.); Operation = ""; Left = None; Right = None; }); 
-                     Right = node.Right; }
-               // ln(f(x))
-               else
-                   {
-                       Value = None; Operation = "*";
-                       Left = Some(
-                       { 
-                           Value = None; Operation = "/"; 
-                           Left = Some({ Value = Some(1.); Operation = ""; Left = None; Right = None; }); 
-                           Right = node.Right; 
-                       });
-                       Right = Some(derivativeFunc node.Right.Value)
-                   }
-    | "sin" -> // sin(x)
-               if node.Right.Value.Operation = "x" then
-                   { Value = None; Operation = "cos"; Left = None; Right = node.Right; }
-               // sin(f(x))
-               else
-                   {
-                       Value = None; Operation = "*";
-                       Left = Some(derivativeFunc node.Right.Value);
-                       Right = Some({ Value = None; Operation = "cos"; Left = None; Right = node.Right; });
-                   }
-    | "cos" -> // cos(x)
-               if node.Right.Value.Operation = "x" then
-                   {
-                       Value = None; Operation = "-";
-                       Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; });
-                       Right = Some({ Value = None; Operation = "sin"; Left = None; Right = node.Right; });
-                   }
-               // cos(f(x))
-               else
-                   {
-                       Value = None; Operation = "*";
-                       Left = Some(derivativeFunc node.Right.Value);
-                       Right = Some(
-                       {
-                           Value = None; Operation = "-";
-                           Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; });
-                           Right = Some({ Value = None; Operation = "sin"; Left = None; Right = node.Right; });
-                       });
-                   }
-    | _ -> failwith "Unknown operation"
-
-let openBrackets (node: Node) : Node =
-    let func = node.ToString()
-    let ind = func.IndexOf("-(")
-
-    let inner = func[ind + 1..]
-
-    let mutable (l, r) = getBracketsIndexesLeft2Right inner
-    let rfirst = r
-
-    let temp = inner[..r].ToCharArray()
-
-    let mutable inde: (int * int) list = []
-
-    while l <> -1 do
-        temp[l] <- '`'
-        temp[r] <- '`'
-        let (l1, r1) = getBracketsIndexesLeft2Right (new String(temp))
-        l <- l1
-
-        if r <> rfirst && r1 < r then
-            l <- -1
-        else
-            r <- r1
-            l <- l1
-            inde <- List.append inde [(l, r)]
-
-    let builder = new StringBuilder(func[..ind])
-
-    let mutable item = 0
-    let mutable i = ind
-
-    while i < rfirst do
-        if fst inde[item] = i then
-            builder.Append inner[fst inde[item]..snd inde[item]] |> ignore
-            i <- snd inde[item]
-            if item + 1 <> inde.Length then item <- item + 1
-            else ()
-        elif inner[i] = '+' then
-           builder.Append '-' |> ignore
-        elif inner[i] = '-' then
-           builder.Append '+' |> ignore
-        else
-           builder.Append inner[i] |> ignore
-
-        i <- i + 1
-    
-    builder.Append(inner[rfirst + 1..]) |> ignore
-
-    convertToFunc (builder.ToString())
-
-
-
-
-let simplifyFunc (node: Node) =
-    let mutable nt = 0.
-    let mutable funcList: Node list = []
-
-    let change (op: string) (number: float) =
-        if op = "-" then
-            -number
-        else
-            number
-
-    let changeFunc (op: string) (node: Node) =
-        if op = "-" then
-            { Value = None; Operation = "-"; Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; }); Right = Some(node); }
-        else
-            node
-
-    let rec sumNumbers (node: Node) : Node =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, val1) when val1 = "+" || val1 = "-" -> 
-            if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
-                let sum = node.Left.Value.Value.Value + change node.Operation node.Right.Value.Value.Value
-                nt <- nt + sum
-                { Value = Some(0.); Operation = ""; Left = None; Right = None}
-            // -x = 0 - x
-            elif node.Left.Value.Value.IsSome && node.Operation = "-" then
-                nt <- nt + node.Left.Value.Value.Value
-                { Value = None; Operation = node.Operation; Left = Some({ Value = Some(0.); Operation = ""; Left = None; Right = None; }); 
-                  Right = Some(sumNumbers node.Right.Value) }
-            elif node.Left.Value.Value.IsSome then
-                nt <- nt + node.Left.Value.Value.Value
-                sumNumbers { Value = None; Operation = node.Right.Value.Operation; Left = node.Right.Value.Left; Right = node.Right.Value.Right }
-            elif node.Right.Value.Value.IsSome then
-                nt <- nt + change node.Operation node.Right.Value.Value.Value
-                sumNumbers { Value = None; Operation = node.Left.Value.Operation; Left = node.Left.Value.Left; Right = node.Left.Value.Right }
-            else
-                { Value = None; Operation = node.Operation; Left = Some(sumNumbers node.Left.Value); Right = Some(sumNumbers node.Right.Value) }
-        | _ -> node
-      
-    let rec clear (node: Node) : Node =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, val1) when val1 = "+" || val1 = "-" -> 
-            if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
-                { Value = Some(0.); Operation = ""; Left = None; Right = None}
-            elif node.Left.Value.Value.IsSome && node.Left.Value.Value.Value <> 0 && node.Operation <> "-" then
-                clear { Value = None; Operation = node.Right.Value.Operation; Left = node.Right.Value.Left; Right = node.Right.Value.Right }
-            elif node.Right.Value.Value.IsSome then
-                clear { Value = None; Operation = node.Left.Value.Operation; Left = node.Left.Value.Left; Right = node.Left.Value.Right }
-            else
-                { Value = None; Operation = node.Operation; Left = Some(clear node.Left.Value); Right = Some(clear node.Right.Value) }
-        | _ -> node
-
-    let rec clearFunc (last: Node) (result: Node) =
-        if last.ToString() = result.ToString() then
-            result
-        else
-            clearFunc result (clear result)
-
-    let rec sumFunc (node: Node) =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, val1) when val1 = "+" || val1 = "-" -> 
-            if (node.Left.Value.Operation = "*" || node.Left.Value.Operation = "^" || node.Left.Value.Operation = "x" || node.Left.Value.IsComplexFunction()) && 
-               (node.Right.Value.Operation = "*" || node.Right.Value.Operation = "^" || node.Right.Value.Operation = "x" || node.Right.Value.IsComplexFunction()) then
-                funcList <- List.append funcList [changeFunc val1 node.Right.Value] |> List.append [node.Left.Value]
-            elif node.Left.Value.Operation = "*" || node.Left.Value.Operation = "^" || node.Left.Value.Operation = "x" || node.Left.Value.IsComplexFunction() then
-                funcList <- List.append funcList [node.Left.Value]
-                sumFunc node.Right.Value
-            elif node.Right.Value.Operation = "*" || node.Right.Value.Operation = "^" || node.Right.Value.Operation = "x" || node.Right.Value.IsComplexFunction() then
-                funcList <- List.append funcList [changeFunc val1 node.Right.Value]
-                sumFunc node.Left.Value
-            else
-                sumFunc node.Left.Value
-                sumFunc node.Right.Value
-        | _ -> ()
-
-
-    let split (node: Node) : float * string =
-        let mutable coef = 1.
-        let mutable isNeg = false
-        
-        let rec getWithoutCoef (node: Node) =
-            match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-            | (true, true, "-") -> 
-                isNeg <- not isNeg
-                getWithoutCoef node.Right.Value
-            | (true, true, "*") -> 
-                if node.Left.Value.Value.IsSome then
-                    coef <- node.Left.Value.Value.Value
-                    node.Right.Value
-                elif node.Right.Value.Value.IsSome then
-                    coef <- node.Right.Value.Value.Value
-                    node.Left.Value
-                else
-                    { Value = None; Operation = node.Operation; Left = Some(getWithoutCoef node.Left.Value); Right = Some(getWithoutCoef node.Right.Value) }
-            | _ -> node
-
-        let nod = getWithoutCoef node
-
-        //let mutable str = []
-
-        //let mutable (removed, (l, r)) = removeExtraBrackets (nod.ToString())
-        //let mutable ind = getSymbolIndexLeft2Right l r '*' removed
-
-        if isNeg then
-            (-coef, nod.ToString())
-        else
-            (coef, nod.ToString())
-            
-    let clearSumFunc (node: Node) =
-        sumFunc node
-
-        if funcList.Length = 0 then
-            node
-        else
-            let arr = List.map (fun x -> split x) funcList
-            printfn "converted %A" arr
-
-            let rec go (arr: (float * string) list) (item: int)=
-                if item = arr.Length then 
-                    arr
-                else
-                    let same = List.filter (fun x -> snd arr[item] = snd x) arr
-                    let notsame = List.filter (fun x -> snd arr[item] <> snd x) arr
-                    let sum = (List.sumBy (fun x -> fst x) same, snd same[0])
-
-                    if fst sum <> 0 then
-                        go (List.append [sum] notsame) (item + 1)
-                    else
-                        go notsame (item)
-
-            let data = go arr 0
-            printfn "arr: %A" data
-
-            let func = String.Join('+', (List.map (fun x -> if fst x = 1. then $"{snd x}" else $"({fst x})*({snd x})" ) data))
-            convertToFunc func
-
-    let pre = sumNumbers node
-    let result = clearFunc pre (clear pre)
-    let data = clearSumFunc result
-
-    printfn "data: %s" (data.ToString())
-    printfn "nt: %f" nt
-
-    if nt <> 0 then
-        { Value = None; Operation = "+"; Left = Some(data); Right = Some({ Value = Some(nt); Operation = ""; Left = None; Right = None; }) }
-    else
-        data
+    | _ -> failwith "lol"      

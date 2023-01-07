@@ -82,7 +82,6 @@ let simplifyFunc (node: Node) =
                 sumFunctions node.Right.Value
         | _ -> ()
 
-
     let split (node: Node) : float * string =
         let mutable coef = 1.
         let mutable funcs: string list = []

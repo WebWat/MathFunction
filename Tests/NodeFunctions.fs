@@ -89,6 +89,18 @@ let ``Get symbol index`` () =
     Assert.Equal(5, (getSymbolIndexLeft2Right 0 4 '+' "(x+2)+2"))
     Assert.Equal(-1, (getSymbolIndexLeft2Right 0 4 '+' "(x+2)"))
 
+    //// Complex
+    Assert.Equal(3, (getSymbolIndexLeft2Right 10 14 '+' "2.2+(x+2)*(x+3)"))
+    Assert.Equal(-1, (getSymbolIndexLeft2Right 14 18 '-' "(2.2-x)+(x-2)*(x-3)"))
+
+    Assert.Equal(7, (getSymbolIndexLeft2Right 14 18 '+' "(x-2.2)+(x+2)*(x+3)"))
+    Assert.Equal(-1, (getSymbolIndexRight2Left 0 6 '+' "(2.2+x)*(x+2)-(x+3)*(x+2)"))
+
+    // With brackets
+    Assert.Equal(3, (getSymbolIndexRight2Left 4 8 '+' "2.2+(x+2)"))
+    Assert.Equal(5, (getSymbolIndexRight2Left 0 4 '+' "(x+2)+2"))
+    Assert.Equal(-1, (getSymbolIndexRight2Left 0 4 '+' "(x+2)"))
+
 [<Fact>]
 let ``Remove extra brackets`` () =
     // Default

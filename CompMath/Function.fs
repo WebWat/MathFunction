@@ -157,14 +157,11 @@ let getSymbolIndexRight2Left (leftBracket: int) (rightBracket: int) (symbol: cha
         let subLine = line[rLast + 2..]
         let (left, right) = getBracketsIndexesRight2Left subLine
         
-        let offset = index - rCurrent - 2
-        
-        if left = -1 || right = -1 || left > offset then
-            index
-        elif offset < right then
-            -1
+        if left = -1 || right = -1 || (rLast < index && index < left + rLast + 2) then
+            if index = -1 then -1
+            else rCurrent + 1
         else
-            checkRightSide subLine right (right + rCurrent + 2) index
+            checkRightSide subLine right (right + rCurrent + 2) (lookOutside subLine symbol left right 0 Operation.Inc)
     
     let index = lookOutside line symbol leftBracket rightBracket 0 Operation.Inc
 
@@ -180,17 +177,15 @@ let getSymbolIndexLeft2Right (leftBracket: int) (rightBracket: int) (symbol: cha
         let subLine = line[..lLast - 2]
         let (left, right) = getBracketsIndexesLeft2Right subLine
         
-        if left = -1 || right = -1 || index > right then
+        if left = -1 || right = -1 || (right < index && index < lLast) then
             index
-        elif left < index then
-            -1
         else
-            checkLeftSide subLine left index
+            checkLeftSide subLine left (lookOutside subLine symbol left right (subLine.Length - 1) Operation.Dec)
     
     let index = lookOutside line symbol leftBracket rightBracket (line.Length - 1) Operation.Dec
 
     // If found symbol beyond expression
-    if leftBracket <> -1 && index < leftBracket && index <> 0 then
+    if leftBracket <> -1 && index < leftBracket && index <> 0 && index <> -1 then
         checkLeftSide line leftBracket index
     else
         index
@@ -232,7 +227,8 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
 
 // Looking for symbols which can split the function.
 let rec searchSymbol (operands: string * string) (line: string) (brackets: int * int) (item: int) =
-    if item = symbols.Length then
+    // Not sure
+    if item >= symbols.Length then
         failwith "Unknow operation"
     else
         match operands with 

@@ -1,6 +1,6 @@
 ﻿module Derivative
 
-open Function
+open Node
 
 let rec derivativeFunc (node: Node) : Node =
     match node.Operation with
@@ -62,11 +62,11 @@ let rec derivativeFunc (node: Node) : Node =
                     }
                 // x/a
                 elif isConst node.Right.Value && node.Left.Value.Operation = "x" then
-                { 
-                    Value = None; Operation = "/"; 
-                    Left = Some({ Value = Some(1.); Operation = ""; Left = None; Right = None; });
-                    Right = node.Right
-                }
+                    { 
+                        Value = None; Operation = "/"; 
+                        Left = Some({ Value = Some(1.); Operation = ""; Left = None; Right = None; });
+                        Right = node.Right
+                    }
                 // a/f(x)
                 elif isConst node.Left.Value then
                     { 
@@ -114,57 +114,57 @@ let rec derivativeFunc (node: Node) : Node =
                     }
     | "^" -> // x^a
                 if node.Left.Value.Operation = "x" && isConst node.Right.Value then
-                { 
-                    Value = None; Operation = "*"; 
-                    Left = node.Right; 
-                    Right = Some(
                     { 
-                        Value = None; Operation = "^"; 
-                        Left = node.Left; 
-                        Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; });
-                    });  
-                }
+                        Value = None; Operation = "*"; 
+                        Left = node.Right; 
+                        Right = Some(
+                        { 
+                            Value = None; Operation = "^"; 
+                            Left = node.Left; 
+                            Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; });
+                        });  
+                    }
                 // a^x
                 elif isConst node.Left.Value then
-                {
-                    Value = None; Operation = "*"; 
-                    Left = Some(node); 
-                    Right = Some({ Value = None; Operation = "ln"; Left = None; Right = node.Left; });  
-                }
+                    {
+                        Value = None; Operation = "*"; 
+                        Left = Some(node); 
+                        Right = Some({ Value = None; Operation = "ln"; Left = None; Right = node.Left; });  
+                    }
                 // f(x)^a
                 elif isConst node.Right.Value then
-                {
-                    Value = None; Operation = "*"; 
-                    Left = Some(
-                    {                     
+                    {
                         Value = None; Operation = "*"; 
-                        Left = node.Right; 
-                        Right = Some(
-                        { 
-                            Value = None; Operation = "^"; 
-                            Left = node.Left; 
-                            Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; })
-                        });  
-                    } ); 
-                    Right = Some(derivativeFunc node.Left.Value);  
-                }
+                        Left = Some(
+                        {                     
+                            Value = None; Operation = "*"; 
+                            Left = node.Right; 
+                            Right = Some(
+                            { 
+                                Value = None; Operation = "^"; 
+                                Left = node.Left; 
+                                Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; })
+                            });  
+                        } ); 
+                        Right = Some(derivativeFunc node.Left.Value);  
+                    }
                 // a^f(x)
                 elif isConst node.Left.Value then
-                {
-                    Value = None; Operation = "*"; 
-                    Left = Some(
-                    {                     
+                    {
                         Value = None; Operation = "*"; 
-                        Left = node.Right; 
-                        Right = Some(
-                        { 
-                            Value = None; Operation = "^"; 
-                            Left = node.Left; 
-                            Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; })
-                        });  
-                    }); 
-                    Right = Some(derivativeFunc node.Left.Value);  
-                }
+                        Left = Some(
+                        {                     
+                            Value = None; Operation = "*"; 
+                            Left = node.Right; 
+                            Right = Some(
+                            { 
+                                Value = None; Operation = "^"; 
+                                Left = node.Left; 
+                                Right = Some({ Value = Some(node.Right.Value.Value.Value - 1.); Operation = ""; Left = None; Right = None; })
+                            });  
+                        }); 
+                        Right = Some(derivativeFunc node.Left.Value);  
+                    }
                 // f(x)^f(x)
                 else
                 derivativeFunc { 

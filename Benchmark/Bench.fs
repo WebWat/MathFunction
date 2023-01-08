@@ -1,7 +1,7 @@
 ﻿module Bench
 
 open BenchmarkDotNet.Attributes
-open Function
+open Node
 
 [<MemoryDiagnoser>]
 type NodeTest() = class

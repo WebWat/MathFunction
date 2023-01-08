@@ -1,6 +1,6 @@
 ﻿module NodeFunctions
 
-open Function
+open Node
 open Xunit
 
 [<Fact>]

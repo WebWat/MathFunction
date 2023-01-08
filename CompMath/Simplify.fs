@@ -1,6 +1,6 @@
 ﻿module Simplify
 
-open Function
+open Node
 open System
 open System.Text
 

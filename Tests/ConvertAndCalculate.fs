@@ -1,7 +1,7 @@
 ﻿module ConvertAndCalculate
 
 open System
-open Function
+open Node
 open Xunit
 
 

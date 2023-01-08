@@ -1,7 +1,7 @@
 ﻿module Limit
 
 open System
-open Function
+open Node
 
 exception NotExist
 

@@ -6,10 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Function.fs" />
+    <Compile Include="Node.fs" />
     <Compile Include="Deravative.fs" />
     <Compile Include="Simplify.fs" />
     <Compile Include="Limit.fs" />
+    <Compile Include="Function.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

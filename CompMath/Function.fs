@@ -22,7 +22,7 @@ type Node =
     override this.ToString() =
         let needBrackets (node: Node) =
             node.Operation <> "x" && node.Operation <> "|" && node.Operation <> "^" &&
-            not (Array.contains node.Operation consts) && not (Array.contains this.Operation funcs)
+            not (Array.contains node.Operation consts) && not (Array.contains node.Operation funcs)
 
         let rec convert2str node =
             match node.Operation with
@@ -40,7 +40,7 @@ type Node =
                         $"{convert2str node.Left.Value}-({convert2str node.Right.Value})"
                      else
                         $"{convert2str node.Left.Value}-{convert2str node.Right.Value}"
-            | "*" -> if needBrackets node.Left.Value &&  node.Left.Value.Operation <> "/" &&  node.Left.Value.Operation <> "*" && 
+            | "*" -> if needBrackets node.Left.Value &&  node.Left.Value.Operation  <> "/" && node.Left.Value.Operation  <> "*" && 
                         needBrackets node.Right.Value && node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
                         $"({convert2str node.Left.Value})*({convert2str node.Right.Value})"
                      elif needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && node.Left.Value.Operation <> "*" then
@@ -82,6 +82,12 @@ let isComplexFunction (node: Node) =
 let isConst (node: Node) =
     Array.contains node.Operation consts
 
+// In developing.
+let isNotComplexExpression (node: Node) =
+    node.Operation = "*" && 
+    (node.Left.Value.Operation = "x" || isConst node.Left.Value || isComplexFunction node.Left.Value) &&
+    (node.Right.Value.Operation = "x" || isConst node.Right.Value || isComplexFunction node.Right.Value)
+
 // Get the index of the nearest bracket or module.
 let private getClosest rightBracket leftModule =
     if rightBracket <> -1 && (leftModule = -1 || 
@@ -100,7 +106,7 @@ let rec private findBracketsIndexes (line: string) (total: int) (current: int) (
     else findBracketsIndexes line total (current + int inc) inc
 
 // Returns the first outer modules indexes.
-let rec findModulesIndexes (line: string) (total: int) (current: int) (lastClose: bool) (inc: Operation) =
+let rec private findModulesIndexes (line: string) (total: int) (current: int) (lastClose: bool) (inc: Operation) =
     if total = 0 then
         current - int inc
     elif current = line.Length - 1 || current = 0 then
@@ -114,7 +120,7 @@ let rec findModulesIndexes (line: string) (total: int) (current: int) (lastClose
         findModulesIndexes line total (current + int inc) false inc
 
 // Looking for a symbol outside the brackets.
-let rec lookOutside (line: string) (symbol: char) (leftBracket: int) (rightBracket: int) (current: int) (inc: Operation) : int =
+let rec private lookOutside (line: string) (symbol: char) (leftBracket: int) (rightBracket: int) (current: int) (inc: Operation) : int =
     if (leftBracket, rightBracket) = (-1, -1) then 
         if inc = Operation.Dec then line.LastIndexOf(symbol)
         else line.IndexOf(symbol)
@@ -132,7 +138,7 @@ let rec lookOutside (line: string) (symbol: char) (leftBracket: int) (rightBrack
         else
             lookOutside line symbol leftBracket rightBracket (current + int inc) inc
 
-// Get the bracket indexes (from the right side of the expression).
+// Get the bracket indexes.
 let getBracketsIndexesRight2Left (line: string) =
     let (left, operation) = getClosest (line.IndexOf '(') (line.IndexOf '|')
 
@@ -141,7 +147,6 @@ let getBracketsIndexesRight2Left (line: string) =
     | '|' -> (left, findModulesIndexes line 1 (left + 1) false Operation.Inc)
     | _ -> (-1, -1)
 
-// Get the bracket indexes (from the left side of the expression).
 let getBracketsIndexesLeft2Right (line: string) =
     let (right, operation) = getClosest (line.LastIndexOf ')') (line.LastIndexOf '|')
 
@@ -185,7 +190,7 @@ let getSymbolIndexLeft2Right (leftBracket: int) (rightBracket: int) (symbol: cha
     let index = lookOutside line symbol leftBracket rightBracket (line.Length - 1) Operation.Dec
 
     // If found symbol beyond expression
-    if leftBracket <> -1 && index < leftBracket && index <> 0 && index <> -1 then
+    if leftBracket <> -1 && index < leftBracket + 1 then
         checkLeftSide line leftBracket index
     else
         index
@@ -227,13 +232,13 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
 
 // Looking for symbols which can split the function.
 let rec searchSymbol (operands: string * string) (line: string) (brackets: int * int) (item: int) =
-    // Not sure
-    if item >= symbols.Length then
-        failwith "Unknow operation"
-    else
-        match operands with 
-        | ("-", "-") -> searchSymbol (breakLine brackets (symbols[item + 1]) line) line brackets (item + 1)
-        | (val1, val2) -> (val1, val2, item)
+    match operands with 
+    | ("-", "-") -> if item + 1 = symbols.Length then
+                        failwith "Unknow operation" 
+                    else
+                        searchSymbol (breakLine brackets (symbols[item + 1]) line) line brackets (item + 1)
+    | (val1, val2) -> (val1, val2, item)
+
 
 // Converts a function represented in a string into a recursive Node entry.
 let convertToFunc (line: string) : Node =

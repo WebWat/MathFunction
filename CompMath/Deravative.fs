@@ -1,4 +1,4 @@
-﻿module Deravative
+﻿module Derivative
 
 open Function
 

@@ -390,7 +390,7 @@ let sumFunc (node: Node) =
     else
         data
 
-let simplifyFunc (node: Node) =
+let expandFunc (node: Node) =
     let rec multiplyBy (multiplier: Node) (right: Node) = 
         match (right.Left.IsSome, right.Right.IsSome, right.Operation) with
         | (true, true, val1) when val1 = "+" || val1 = "-" -> 
@@ -432,13 +432,13 @@ let simplifyFunc (node: Node) =
         | (true, true, "*") -> 
             if (node.Left.Value.Operation = "+"  || node.Left.Value.Operation = "-") &&
                (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-") then
-                operation node.Left.Value node.Right.Value
+                operation node.Left.Value node.Right.Value |> sumFunc
             elif (node.Left.Value.Operation = "+" || node.Left.Value.Operation = "-") && 
-                 (isNotComplexExpression node.Right.Value || isConst node.Right.Value) then
-                multiplyBy node.Right.Value node.Left.Value
+                 (isNotComplexExpression node.Right.Value) then
+                multiplyBy node.Right.Value node.Left.Value |> sumFunc
             elif (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-") &&
-                 (isNotComplexExpression node.Left.Value || isConst node.Left.Value)then
-                multiplyBy node.Left.Value node.Right.Value
+                 (isNotComplexExpression node.Left.Value)then
+                multiplyBy node.Left.Value node.Right.Value |> sumFunc
             else 
                 { Value = None; Operation = "*"; Left = Some(findMul node.Left.Value);
                   Right = Some(findMul node.Right.Value); }

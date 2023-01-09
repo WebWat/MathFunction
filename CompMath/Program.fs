@@ -11,7 +11,7 @@ while true do
     let text = Console.ReadLine() // x*x-x*2-x*3-(2*x-2*2-2*3)-(3*x-3*2-3*3) x^2+x+3-2+2^x+x^2
     let der = convertToFunc text
     printfn "string: %s" (der.ToString())
-    printfn "Derivative string: %s" ((simplifyFunc der).ToString())
+    printfn "Derivative string: %s" ((expandFunc der).ToString())
     //if text = "clear" then
     //    let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
     //    printfn "Before: %.1f KB" start

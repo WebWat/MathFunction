@@ -42,5 +42,23 @@ namespace UI
             }
             catch { }
         }
+
+        private void Lol(object sender, KeyEventArgs e)
+        {
+            //if (e.Key == Key.Enter)
+            //    try
+            //    {
+            //        if (text.Text == "")
+            //        {
+            //            result.Text = "0";
+            //        }
+            //        else
+            //        {
+            //            var func = new Function(text.Text);
+            //            result.Text = func.Calc(0).ToString("f3");
+            //        }
+            //    }
+            //    catch { }
+        }
     }
 }

@@ -4,7 +4,207 @@ open Node
 open System
 open System.Text
 
-let simplifyFunc (node: Node) =
+let openBrackets (node: Node) =
+    let mutable clear = true
+
+    let op (node: Node) =
+        let func = node.ToString()
+        let ind = func.IndexOf("-(")
+
+        if ind = -1 then
+            node
+        else
+            clear <- false
+
+            let inner = func[ind + 1..]
+
+            let mutable (l, r) = getBracketsIndexesRight2Left inner
+            let rfirst = r
+
+            let temp = inner[..r].ToCharArray()
+
+            let mutable brackets: (int * int) list = []
+
+            while l <> -1 do
+                temp[l] <- '`'
+                temp[r] <- '`'
+
+                let (l1, r1) = getBracketsIndexesLeft2Right (new String(temp))
+
+                if l1 = -1 || (r <> rfirst && r1 < r) then
+                    l <- -1
+                else
+                    r <- r1
+                    l <- l1
+                    brackets <- List.append brackets [(l, r)]
+
+            let builder = new StringBuilder(func[..ind])
+
+            let mutable item = 0
+            let mutable i = 1
+
+            while i < rfirst do
+                if brackets.Length <> 0 && fst brackets[item] = i then
+                    builder.Append inner[fst brackets[item]..snd brackets[item]] |> ignore
+                    i <- snd brackets[item]
+                    if item + 1 <> brackets.Length then item <- item + 1
+                    else ()
+                elif temp[i] = '+' then
+                    builder.Append '-' |> ignore
+                elif temp[i] = '-' then
+                    builder.Append '+' |> ignore
+                else
+                    builder.Append temp[i] |> ignore
+
+                i <- i + 1
+    
+            builder.Append(inner[rfirst + 1..]) |> ignore
+
+            convertToFunc (builder.ToString()) 
+
+    let rec clearFunc (result: Node) =
+        if clear then result
+        else 
+            clear <- true
+            clearFunc (op result)
+
+    clearFunc (op node)
+
+// -2*3
+let multiplySimple (node: Node) =
+    let mutable x0 = 1.
+    let mutable funcList: Node list = []
+
+    let rec mulNumbers (node: Node) : Node =
+        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+        | (true, true, "*") -> 
+            if x0 = 0. then 
+                node
+            elif node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
+                x0 <- x0 * node.Left.Value.Value.Value * node.Right.Value.Value.Value
+                { Value = Some(x0); Operation = ""; Left = None; Right = None }
+            elif node.Left.Value.Value.IsSome then
+                x0 <- x0 * node.Left.Value.Value.Value
+                mulNumbers { Value = None; Operation = node.Right.Value.Operation; Left = node.Right.Value.Left; Right = node.Right.Value.Right }
+            elif node.Right.Value.Value.IsSome then
+                x0 <- x0 * node.Right.Value.Value.Value
+                mulNumbers { Value = None; Operation = node.Left.Value.Operation; Left = node.Left.Value.Left; Right = node.Left.Value.Right }
+            else
+                { Value = None; Operation = node.Operation; Left = Some(mulNumbers node.Left.Value); Right = Some(mulNumbers node.Right.Value) }
+        | _ -> node
+
+    let rec clearNumbers (node: Node) (first: bool) : Node =
+        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+        | (true, true, "*") -> 
+            if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
+                { Value = Some(0.); Operation = ""; Left = None; Right = None}
+            elif node.Left.Value.Value.IsSome then
+                clearNumbers { Value = None; Operation = node.Right.Value.Operation; Left = node.Right.Value.Left; Right = node.Right.Value.Right } first
+            elif node.Right.Value.Value.IsSome then
+                clearNumbers { Value = None; Operation = node.Left.Value.Operation;  Left = node.Left.Value.Left;  Right = node.Left.Value.Right } first
+            else
+                { Value = None; Operation = node.Operation; Left = Some(clearNumbers node.Left.Value first); Right = Some(clearNumbers node.Right.Value first) }
+        | _ ->  if first then
+                    funcList <- List.append funcList [node]
+                    node
+                else
+                    node
+
+    let split (node: Node) : (string * float) =
+        let mutable coef = 1.
+        let mutable funcs: string list = []
+
+        let rec getWithoutCoef (node: Node) =
+            match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+            | (true, true, "^") -> 
+                if node.Right.Value.Value.IsSome then
+                    coef <- node.Right.Value.Value.Value
+                    node.Left.Value
+                else
+                    { Value = None; Operation = node.Operation; Left = Some(getWithoutCoef node.Left.Value); Right = Some(getWithoutCoef node.Right.Value) }
+            | _ -> node
+
+        let rec splitFuncs (node: Node) =
+            match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+            | (true, true, "*") -> 
+                if node.Left.Value.Operation <> "*" && 
+                   node.Right.Value.Operation <> "*" then
+                   funcs <- List.append funcs [node.Left.Value.ToString()]
+                   funcs <- List.append funcs [node.Right.Value.ToString()]
+                elif node.Left.Value.Operation <> "*" then
+                   funcs <- List.append funcs [node.Left.Value.ToString()]
+                   splitFuncs node.Right.Value
+                elif node.Right.Value.Operation <> "*" then
+                   funcs <- List.append funcs [node.Right.Value.ToString()]
+                   splitFuncs node.Left.Value
+                else
+                   splitFuncs node.Left.Value
+                   splitFuncs node.Right.Value
+            | _ -> ()
+
+        let nod1 = getWithoutCoef node
+        splitFuncs nod1
+
+        if funcs.Length = 0 then
+            (nod1.ToString(), coef)
+        else
+            let inc = List.filter (fun x -> isNumber x) funcs |> List.map (fun x -> Math.Pow((float x), coef)) |> List.reduce (fun a b -> a * b)
+            x0 <- x0 * inc
+
+            let nod = String.Join('*', List.filter (fun x -> not(isNumber x)) funcs |> List.sort)
+            (nod, coef)
+
+    let rec recClearNumbers (last: Node) (result: Node) =
+        if last.ToString() = result.ToString() then
+            result
+        else
+            recClearNumbers result (clearNumbers result false)
+
+    let clearMulFunctions (node: Node) =
+        if funcList.Length = 0 then
+            node
+        else
+            let arr = List.map (fun x -> split x) funcList
+            printfn "converted: %A" arr
+
+            let rec go (arr: (string * float) list) (item: int)=
+                if item = arr.Length then 
+                    arr
+                else
+                    let same = List.filter (fun x -> fst arr[item] = fst x) arr
+                    let notsame = List.filter (fun x -> fst arr[item] <> fst x) arr
+                    let sum = (fst same[0], List.sumBy (fun x -> snd x) same)
+
+                    if snd sum <> 0 then
+                        go (List.append [sum] notsame) (item + 1)
+                    else
+                        go notsame (item)
+
+            let data = go arr 0
+            printfn "arr: %A" data
+            if data.Length = 0 then
+                { Value = Some(1.); Operation = ""; Left = None; Right = None; }
+            else
+                let func = String.Join('*', (List.map (fun x -> if snd x = 1. then $"{fst x}" else $"({fst x})^({snd x})" ) data))
+                convertToFunc func
+
+    let data = mulNumbers node
+
+    if x0 = 0 then
+        { Value = Some(0.); Operation = ""; Left = None; Right = None; }
+    else
+        let result = recClearNumbers data (clearNumbers data true) 
+
+        let res2 = clearMulFunctions result
+
+        printfn "x0: %f" x0
+
+        if x0 <> 1 && not(isConst res2) then
+            { Value = None; Operation = "*"; Left = Some({ Value = Some(x0); Operation = ""; Left = None; Right = None; }); Right = Some(res2) }
+        else
+            res2
+
+let sumFunc (node: Node) =
     let mutable x0 = 0.
     let mutable funcList: Node list = []
 
@@ -82,6 +282,21 @@ let simplifyFunc (node: Node) =
                 sumFunctions node.Right.Value
         | _ -> ()
 
+    let rec mulFunction (node: Node) =
+        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+        | (true, true, "*") -> multiplySimple node
+        | (true, true, val1) when val1 = "+" || val1 = "-" -> 
+            if not (isConst node.Left.Value) && node.Left.Value.Operation <> "+" && node.Left.Value.Operation <> "+" && 
+               not (isConst node.Left.Value) && node.Right.Value.Operation <> "+" && node.Right.Value.Operation <> "+" then
+                { Value = None; Operation = node.Operation; Left = Some(multiplySimple node.Left.Value); Right = Some(multiplySimple node.Right.Value) }
+            elif not (isConst node.Left.Value) && node.Left.Value.Operation <> "+" && node.Left.Value.Operation <> "+" then
+                { Value = None; Operation = node.Operation; Left = Some(multiplySimple node.Left.Value); Right = Some(mulFunction node.Right.Value) }
+            elif not (isConst node.Right.Value) && node.Right.Value.Operation <> "+" && node.Right.Value.Operation <> "+" then
+                { Value = None; Operation = node.Operation; Left = Some(mulFunction node.Left.Value); Right = Some(multiplySimple node.Right.Value) }
+            else
+                { Value = None; Operation = node.Operation; Left = Some(mulFunction node.Left.Value); Right = Some(mulFunction node.Right.Value) }
+        | _ -> node
+
     let split (node: Node) : float * string =
         let mutable coef = 1.
         let mutable funcs: string list = []
@@ -123,6 +338,7 @@ let simplifyFunc (node: Node) =
         let nod1 = getWithoutCoef node
         splitFuncs nod1
 
+        
         if funcs.Length = 0 then
             (coef, nod1.ToString())
         else
@@ -159,7 +375,8 @@ let simplifyFunc (node: Node) =
             let func = String.Join('+', (List.map (fun x -> if fst x = 1. then $"{snd x}" else $"({fst x})*({snd x})" ) data))
             convertToFunc func
 
-    let pre = sumNumbers node
+    let pre = mulFunction node 
+            |> sumNumbers
     printfn "pre: %s" (pre.ToString())
     let result = recClearNumbers pre (clearNumbers pre)
     printfn "result: %s" (result.ToString())
@@ -173,73 +390,7 @@ let simplifyFunc (node: Node) =
     else
         data
 
-let openBrackets (node: Node) =
-    let mutable clear = true
-
-    let op (node: Node) =
-        let func = node.ToString()
-        let ind = func.IndexOf("-(")
-
-        if ind = -1 then
-            node
-        else
-            clear <- false
-
-            let inner = func[ind + 1..]
-
-            let mutable (l, r) = getBracketsIndexesRight2Left inner
-            let rfirst = r
-
-            let temp = inner[..r].ToCharArray()
-
-            let mutable brackets: (int * int) list = []
-
-            while l <> -1 do
-                temp[l] <- '`'
-                temp[r] <- '`'
-
-                let (l1, r1) = getBracketsIndexesLeft2Right (new String(temp))
-
-                if l1 = -1 || (r <> rfirst && r1 < r) then
-                    l <- -1
-                else
-                    r <- r1
-                    l <- l1
-                    brackets <- List.append brackets [(l, r)]
-
-            let builder = new StringBuilder(func[..ind])
-
-            let mutable item = 0
-            let mutable i = 1
-
-            while i < rfirst do
-                if brackets.Length <> 0 && fst brackets[item] = i then
-                    builder.Append inner[fst brackets[item]..snd brackets[item]] |> ignore
-                    i <- snd brackets[item]
-                    if item + 1 <> brackets.Length then item <- item + 1
-                    else ()
-                elif temp[i] = '+' then
-                    builder.Append '-' |> ignore
-                elif temp[i] = '-' then
-                    builder.Append '+' |> ignore
-                else
-                    builder.Append temp[i] |> ignore
-
-                i <- i + 1
-    
-            builder.Append(inner[rfirst + 1..]) |> ignore
-
-            convertToFunc (builder.ToString()) 
-
-    let rec clearFunc (result: Node) =
-        if clear then result
-        else 
-            clear <- true
-            clearFunc (op result)
-
-    clearFunc (op node)
-
-let multiplyFunc (node: Node) =
+let simplifyFunc (node: Node) =
     let rec multiplyBy (multiplier: Node) (right: Node) = 
         match (right.Left.IsSome, right.Right.IsSome, right.Operation) with
         | (true, true, val1) when val1 = "+" || val1 = "-" -> 
@@ -282,9 +433,11 @@ let multiplyFunc (node: Node) =
             if (node.Left.Value.Operation = "+"  || node.Left.Value.Operation = "-") &&
                (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-") then
                 operation node.Left.Value node.Right.Value
-            elif (node.Left.Value.Operation = "+"  || node.Left.Value.Operation = "-") && isNotComplexExpression node.Right.Value then
+            elif (node.Left.Value.Operation = "+" || node.Left.Value.Operation = "-") && 
+                 (isNotComplexExpression node.Right.Value || isConst node.Right.Value) then
                 multiplyBy node.Right.Value node.Left.Value
-            elif (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-") && isNotComplexExpression node.Left.Value then
+            elif (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-") &&
+                 (isNotComplexExpression node.Left.Value || isConst node.Left.Value)then
                 multiplyBy node.Left.Value node.Right.Value
             else 
                 { Value = None; Operation = "*"; Left = Some(findMul node.Left.Value);
@@ -293,57 +446,10 @@ let multiplyFunc (node: Node) =
                                   Right = Some(findMul node.Right.Value); }
         | _ -> node
 
-    findMul node
-
-let multiplySimple (node: Node) =
-    let mutable x0 = 1.
-
-    let rec mulNumbers (node: Node) : Node =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, "*") -> 
-            if x0 = 0. then 
-                node
-            elif node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
-                x0 <- x0 * node.Left.Value.Value.Value * node.Right.Value.Value.Value
-                { Value = Some(x0); Operation = ""; Left = None; Right = None }
-            elif node.Left.Value.Value.IsSome then
-                x0 <- x0 * node.Left.Value.Value.Value
-                mulNumbers { Value = None; Operation = node.Right.Value.Operation; Left = node.Right.Value.Left; Right = node.Right.Value.Right }
-            elif node.Right.Value.Value.IsSome then
-                x0 <- x0 * node.Right.Value.Value.Value
-                mulNumbers { Value = None; Operation = node.Left.Value.Operation; Left = node.Left.Value.Left; Right = node.Left.Value.Right }
-            else
-                { Value = None; Operation = node.Operation; Left = Some(mulNumbers node.Left.Value); Right = Some(mulNumbers node.Right.Value) }
-        | _ -> node
-
-    let rec clearNumbers (node: Node) : Node =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, "*") -> 
-            if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
-                { Value = Some(0.); Operation = ""; Left = None; Right = None}
-            elif node.Left.Value.Value.IsSome then
-                clearNumbers { Value = None; Operation = node.Right.Value.Operation; Left = node.Right.Value.Left; Right = node.Right.Value.Right }
-            elif node.Right.Value.Value.IsSome then
-                clearNumbers { Value = None; Operation = node.Left.Value.Operation; Left = node.Left.Value.Left; Right = node.Left.Value.Right }
-            else
-                { Value = None; Operation = node.Operation; Left = Some(clearNumbers node.Left.Value); Right = Some(clearNumbers node.Right.Value) }
-        | _ -> node
-
-    let rec recClearNumbers (last: Node) (result: Node) =
+    let rec recClear (last: Node) (result: Node) =
         if last.ToString() = result.ToString() then
             result
         else
-            recClearNumbers result (clearNumbers result)
+            recClear result (openBrackets (findMul result))
 
-    let data = mulNumbers node
-
-    if x0 = 0 then
-        { Value = Some(0.); Operation = ""; Left = None; Right = None; }
-    else
-        let result = recClearNumbers data (clearNumbers data) 
-        printfn "x0: %f" x0
-
-        if x0 <> 1 then
-            { Value = None; Operation = "*"; Left = Some({ Value = Some(x0); Operation = ""; Left = None; Right = None; }); Right = Some(result) }
-        else
-            result
+    recClear node (openBrackets (findMul node))

@@ -82,9 +82,13 @@ let isComplexFunction (node: Node) =
 let isConst (node: Node) =
     Array.contains node.Operation consts
 
+let isNumber (number: string) =
+        let mutable temp = 0.0
+        // Parse with a dot
+        Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
+
 // In developing.
 let isNotComplexExpression (node: Node) =
-    node.Operation = "*" && 
     (node.Left.Value.Operation = "x" || isConst node.Left.Value || isComplexFunction node.Left.Value) &&
     (node.Right.Value.Operation = "x" || isConst node.Right.Value || isComplexFunction node.Right.Value)
 
@@ -242,11 +246,6 @@ let rec searchSymbol (operands: string * string) (line: string) (brackets: int *
 
 // Converts a function represented in a string into a recursive Node entry.
 let convertToFunc (line: string) : Node =
-    let isNumber (number: string) =
-        let mutable temp = 0.0
-        // Parse with a dot
-        Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
-
     let rec convert (line: string) =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line

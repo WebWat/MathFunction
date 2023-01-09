@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        <TextBox x:Name="text" HorizontalAlignment="Center" FontSize="20" TextAlignment="Center" VerticalContentAlignment="Center" Height="50" Margin="0,154,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="550" TextChanged="TextChanged"/>
+        <TextBox x:Name="text" HorizontalAlignment="Center" FontSize="20" TextAlignment="Center" VerticalContentAlignment="Center" Height="50" Margin="0,154,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="550" TextChanged="TextChanged" KeyDown="Lol"/>
         <TextBlock x:Name="result" HorizontalAlignment="Center" Text="0" TextAlignment="Center" FontSize="20" FontWeight="Bold" Height="56" Margin="0,234,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="150"/>
 
     </Grid>

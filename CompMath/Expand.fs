@@ -1,21 +1,17 @@
-﻿module Simplify
+﻿module Expand
 
 open Node
 open System
 open System.Text
 
 let openBrackets (node: Node) =
-    let mutable clear = true
-
-    let op (node: Node) =
+    let operation (node: Node) =
         let func = node.ToString()
         let ind = func.IndexOf("-(")
 
         if ind = -1 then
             node
         else
-            clear <- false
-
             let inner = func[ind + 1 ..]
 
             let mutable (l, r) = getBracketsIndexesRight2Left inner
@@ -38,10 +34,15 @@ let openBrackets (node: Node) =
                     l <- l1
                     brackets <- List.append brackets [ (l, r) ]
 
-            let builder = new StringBuilder(func[..ind])
+            let builder = new StringBuilder(func[ .. ind - 1])
 
             let mutable item = 0
             let mutable i = 1
+
+            if func[ind] = '-' && temp[i] = '-' then
+                builder.Append("+") |> ignore
+            else
+                builder.Append(func[ind]) |> ignore
 
             while i < rfirst do
                 if brackets.Length <> 0 && fst brackets[item] = i then
@@ -51,7 +52,10 @@ let openBrackets (node: Node) =
                 elif temp[i] = '+' then
                     builder.Append '-' |> ignore
                 elif temp[i] = '-' then
-                    builder.Append '+' |> ignore
+                    if i <> 1 then
+                        builder.Append '+' |> ignore
+                    else
+                        ()
                 else
                     builder.Append temp[i] |> ignore
 
@@ -61,18 +65,17 @@ let openBrackets (node: Node) =
 
             convertToFunc (builder.ToString())
 
-    let rec clearFunc (result: Node) =
-        if clear then
+    let rec clearFunc (last: Node) (result: Node) =
+        if last.ToString() = result.ToString() then
             result
         else
-            clear <- true
-            clearFunc (op result)
+            clearFunc result (operation result)
 
-    clearFunc (op node)
+    clearFunc node (operation node)
 
 // (x*x)^4
 // x^x
-
+// recClear?
 let simplifyMultiply (node: Node) =
     let (|Multiply|Minus|Another|) (node: Node) =
         if node.Left.IsSome && node.Right.IsSome && node.Operation = "*" then
@@ -156,8 +159,9 @@ let simplifyMultiply (node: Node) =
 
     let splitFunc (node: Node) : (string * float) =
         let mutable coef = 1.
+        let mutable sign = 1.
 
-        let rec getWithoutCoef (node: Node) =
+        let rec getWithoutDegree (node: Node) =
             match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
             | (true, true, "^") ->
                 if node.Right.Value.Value.IsSome then
@@ -166,12 +170,15 @@ let simplifyMultiply (node: Node) =
                 else
                     { Value = None
                       Operation = node.Operation
-                      Left = Some(getWithoutCoef node.Left.Value)
-                      Right = Some(getWithoutCoef node.Right.Value) }
+                      Left = Some(getWithoutDegree node.Left.Value)
+                      Right = Some(getWithoutDegree node.Right.Value) }
             | _ -> node
 
         let rec splitFuncs (node: Node) : string list =
             match node with
+            | Minus -> 
+                 sign <- -sign
+                 splitFuncs node.Right.Value
             | Multiply ->
                 match (node.Left.Value.Operation, node.Right.Value.Operation) with
                 | (val1, val2) when val1 <> "*" && val2 <> "*" ->
@@ -179,24 +186,26 @@ let simplifyMultiply (node: Node) =
                 | (_, "*") -> List.append [ node.Left.Value.ToString() ] (splitFuncs node.Right.Value)
                 | ("*", _) -> List.append [ node.Right.Value.ToString() ] (splitFuncs node.Left.Value)
                 | _ -> List.append (splitFuncs node.Left.Value) (splitFuncs node.Right.Value)
-            | Minus
             | Another -> []
 
-        let clearedNode = getWithoutCoef node
+        let clearedNode = getWithoutDegree node
         let funcs = splitFuncs clearedNode
 
         if funcs.Length = 0 then
             (clearedNode.ToString(), coef)
         else
-            let degree =
-                List.filter (fun x -> isNumber x) funcs
-                |> List.map (fun x -> Math.Pow((float x), coef))
+            let degree = List.filter (fun x -> isNumber x) funcs
 
             let degreeCheck =
                 if degree.Length = 0 then
                     1.
                 else
-                    degree |> List.reduce (fun a b -> a * b)
+                    Math.Pow( 
+                        (degree 
+                        |> List.map (fun x -> float x) 
+                        |> List.reduce (fun a b -> a * b)) * sign,
+                        coef
+                    )
 
             let result =
                 String.Join('*', List.filter (fun x -> not (isNumber x)) funcs |> List.sort)
@@ -209,10 +218,9 @@ let simplifyMultiply (node: Node) =
         if funcList.Length = 0 then
             node
         else
-            let arr = List.map (fun x -> splitFunc x) funcList
-            printfn "converted: %A" arr
+            let converted = List.map (fun x -> splitFunc x) funcList
 
-            let rec go (arr: (string * float) list) (item: int) =
+            let rec reduce (arr: (string * float) list) (item: int) =
                 if item = arr.Length then
                     arr
                 else
@@ -221,15 +229,14 @@ let simplifyMultiply (node: Node) =
                     let sum = (fst same[0], List.sumBy (fun x -> snd x) same)
 
                     if snd sum <> 0 then
-                        go (List.append [ sum ] notsame) (item + 1)
+                        reduce (List.append [ sum ] notsame) (item + 1)
                     else
-                        go notsame (item)
+                        reduce notsame (item)
 
-            let result = go arr 0
-            printfn "arr: %A" result
+            let result = reduce converted 0
 
             if result.Length = 0 then
-                { Value = Some(1.)
+                { Value = Some(1.) // why 1?
                   Operation = ""
                   Left = None
                   Right = None }
@@ -243,6 +250,8 @@ let simplifyMultiply (node: Node) =
                 convertToFunc func
 
     let data = multiplyNumbers node
+    printfn "sMul x0: %f" x0
+    printfn "sMul data : %s" (data.ToString())
 
     match x0 with
     | 0. ->
@@ -252,8 +261,6 @@ let simplifyMultiply (node: Node) =
           Right = None }
     | _ ->
         let result = clearNumbers data |> clearFuncs
-
-        printfn "x0: %f" x0
 
         if x0 <> 1 && not (isConst result) then
             { Value = None
@@ -269,9 +276,27 @@ let simplifyMultiply (node: Node) =
         else
             result
 
+// add cache for sin(x), x ...
 let simplifySum (node: Node) =
+    let (|Sum|Another|) (node: Node) =
+        if node.Left.IsSome && node.Right.IsSome && (node.Operation = "+" || node.Operation = "-") then
+            Sum
+        else
+            Another
+
+    let (|Both|Left|LeftNeg|Right|None|) (node: Node) =
+        if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
+            Both
+        elif node.Left.Value.Value.IsSome && node.Operation = "-" then
+            LeftNeg
+        elif node.Left.Value.Value.IsSome then
+            Left
+        elif node.Right.Value.Value.IsSome then
+            Right
+        else
+            None
+
     let mutable x0 = 0.
-    let mutable funcList: Node list = []
 
     let changeIfNeg (op: string) (number: float) = if op = "-" then -number else number
 
@@ -291,9 +316,10 @@ let simplifySum (node: Node) =
             node
 
     let rec sumNumbers (node: Node) : Node =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, val1) when val1 = "+" || val1 = "-" ->
-            if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
+        match node with
+        | Sum ->
+            match node with
+            | Both -> 
                 let sum =
                     node.Left.Value.Value.Value
                     + changeIfNeg node.Operation node.Right.Value.Value.Value
@@ -304,8 +330,7 @@ let simplifySum (node: Node) =
                   Operation = ""
                   Left = None
                   Right = None }
-            // -x = 0 - x
-            elif node.Left.Value.Value.IsSome && node.Operation = "-" then
+            | LeftNeg ->
                 x0 <- x0 + node.Left.Value.Value.Value
 
                 { Value = None
@@ -318,59 +343,40 @@ let simplifySum (node: Node) =
                           Right = None }
                     )
                   Right = Some(sumNumbers node.Right.Value) }
-            elif node.Left.Value.Value.IsSome then
+            | Left ->
                 x0 <- x0 + node.Left.Value.Value.Value
 
-                sumNumbers
-                    { Value = None
-                      Operation = node.Right.Value.Operation
-                      Left = node.Right.Value.Left
-                      Right = node.Right.Value.Right }
-            elif node.Right.Value.Value.IsSome then
+                sumNumbers node.Right.Value
+            | Right ->
                 x0 <- x0 + changeIfNeg node.Operation node.Right.Value.Value.Value
 
-                sumNumbers
-                    { Value = None
-                      Operation = node.Left.Value.Operation
-                      Left = node.Left.Value.Left
-                      Right = node.Left.Value.Right }
-            else
+                sumNumbers node.Left.Value
+            | None ->
                 { Value = None
                   Operation = node.Operation
                   Left = Some(sumNumbers node.Left.Value)
                   Right = Some(sumNumbers node.Right.Value) }
-        | _ -> node
+        | Another -> node
 
     let rec clearNumbers (node: Node) : Node =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, val1) when val1 = "+" || val1 = "-" ->
-            if node.Left.Value.Value.IsSome && node.Right.Value.Value.IsSome then
+        match node with
+        | Sum ->
+            match node with
+            | Both ->
                 { Value = Some(0.)
                   Operation = ""
                   Left = None
                   Right = None }
-            elif
-                node.Left.Value.Value.IsSome
-                && node.Left.Value.Value.Value <> 0
-                && node.Operation <> "-"
-            then
-                clearNumbers
-                    { Value = None
-                      Operation = node.Right.Value.Operation
-                      Left = node.Right.Value.Left
-                      Right = node.Right.Value.Right }
-            elif node.Right.Value.Value.IsSome then
-                clearNumbers
-                    { Value = None
-                      Operation = node.Left.Value.Operation
-                      Left = node.Left.Value.Left
-                      Right = node.Left.Value.Right }
-            else
+            | LeftNeg when node.Left.Value.Value.Value <> 0 ->
+                clearNumbers node.Right.Value
+            | Right ->
+                clearNumbers node.Left.Value
+            | _ ->
                 { Value = None
                   Operation = node.Operation
                   Left = Some(clearNumbers node.Left.Value)
                   Right = Some(clearNumbers node.Right.Value) }
-        | _ -> node
+        | Another -> node
 
     let rec recClearNumbers (last: Node) (result: Node) =
         if last.ToString() = result.ToString() then
@@ -379,8 +385,8 @@ let simplifySum (node: Node) =
             recClearNumbers result (clearNumbers result)
 
     let rec sumFunctions (node: Node) =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, val1) when val1 = "+" || val1 = "-" ->
+        match node with
+        | Sum ->
             if
                 (node.Left.Value.Operation = "*"
                  || node.Left.Value.Operation = "^"
@@ -391,41 +397,36 @@ let simplifySum (node: Node) =
                     || node.Right.Value.Operation = "x"
                     || isComplexFunction node.Right.Value)
             then
-                funcList <-
-                    List.append funcList [ changeFuncIfNeg val1 node.Right.Value ]
-                    |> List.append [ node.Left.Value ]
+                 List.append [ changeFuncIfNeg node.Operation node.Right.Value ] [ node.Left.Value ]
             elif
                 node.Left.Value.Operation = "*"
                 || node.Left.Value.Operation = "^"
                 || node.Left.Value.Operation = "x"
                 || isComplexFunction node.Left.Value
             then
-                funcList <- List.append funcList [ node.Left.Value ]
-                sumFunctions node.Right.Value
+                List.append [ node.Left.Value ] (sumFunctions node.Right.Value)
             elif
                 node.Right.Value.Operation = "*"
                 || node.Right.Value.Operation = "^"
                 || node.Right.Value.Operation = "x"
                 || isComplexFunction node.Right.Value
             then
-                funcList <- List.append funcList [ changeFuncIfNeg val1 node.Right.Value ]
-                sumFunctions node.Left.Value
+                List.append [ changeFuncIfNeg node.Operation node.Right.Value ] (sumFunctions node.Left.Value)
             else
-                sumFunctions node.Left.Value
-                sumFunctions node.Right.Value
-        | _ -> ()
+                List.append (sumFunctions node.Left.Value) (sumFunctions node.Right.Value)
+        | Another -> []
 
-    let rec mulFunction (node: Node) =
+    let rec multiplyFuncs (node: Node) =
         match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
         | (true, true, val1) when val1 = "*" || val1 = "^" -> simplifyMultiply node
         | (true, true, val1) when val1 = "+" || val1 = "-" ->
             if
                 not (isConst node.Left.Value)
                 && node.Left.Value.Operation <> "+"
-                && node.Left.Value.Operation <> "+"
+                && node.Left.Value.Operation <> "-"
                 && not (isConst node.Left.Value)
                 && node.Right.Value.Operation <> "+"
-                && node.Right.Value.Operation <> "+"
+                && node.Right.Value.Operation <> "-"
             then
                 { Value = None
                   Operation = node.Operation
@@ -434,54 +435,50 @@ let simplifySum (node: Node) =
             elif
                 not (isConst node.Left.Value)
                 && node.Left.Value.Operation <> "+"
-                && node.Left.Value.Operation <> "+"
+                && node.Left.Value.Operation <> "-"
             then
                 { Value = None
                   Operation = node.Operation
                   Left = Some(simplifyMultiply node.Left.Value)
-                  Right = Some(mulFunction node.Right.Value) }
+                  Right = Some(multiplyFuncs node.Right.Value) }
             elif
                 not (isConst node.Right.Value)
                 && node.Right.Value.Operation <> "+"
-                && node.Right.Value.Operation <> "+"
+                && node.Right.Value.Operation <> "-"
             then
                 { Value = None
                   Operation = node.Operation
-                  Left = Some(mulFunction node.Left.Value)
+                  Left = Some(multiplyFuncs node.Left.Value)
                   Right = Some(simplifyMultiply node.Right.Value) }
             else
                 { Value = None
                   Operation = node.Operation
-                  Left = Some(mulFunction node.Left.Value)
-                  Right = Some(mulFunction node.Right.Value) }
+                  Left = Some(multiplyFuncs node.Left.Value)
+                  Right = Some(multiplyFuncs node.Right.Value) }
 
         | _ -> node
 
-    let split (node: Node) : float * string =
+    let splitFuncs (node: Node) : float * string =
         let mutable coef = 1.
-        let mutable funcs: string list = []
+        let mutable sign = 1.
 
         let rec splitFuncs (node: Node) =
             match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
             | (true, true, "*") ->
                 if node.Left.Value.Operation <> "*" && node.Right.Value.Operation <> "*" then
-                    funcs <- List.append funcs [ node.Left.Value.ToString() ]
-                    funcs <- List.append funcs [ node.Right.Value.ToString() ]
+                    [ node.Left.Value.ToString(); node.Right.Value.ToString() ]
                 elif node.Left.Value.Operation <> "*" then
-                    funcs <- List.append funcs [ node.Left.Value.ToString() ]
-                    splitFuncs node.Right.Value
+                    List.append [ node.Left.Value.ToString() ] (splitFuncs node.Right.Value)
                 elif node.Right.Value.Operation <> "*" then
-                    funcs <- List.append funcs [ node.Right.Value.ToString() ]
-                    splitFuncs node.Left.Value
+                    List.append [ node.Right.Value.ToString() ] (splitFuncs node.Left.Value)
                 else
-                    splitFuncs node.Left.Value
-                    splitFuncs node.Right.Value
-            | _ -> ()
+                    List.append (splitFuncs node.Left.Value) (splitFuncs node.Right.Value)
+            | _ -> []
 
         let rec getWithoutCoef (node: Node) =
             match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
             | (true, true, "-") ->
-                coef <- -coef
+                sign <- -sign
                 getWithoutCoef node.Right.Value
             | (true, true, "*") ->
                 if node.Left.Value.Value.IsSome then
@@ -497,28 +494,24 @@ let simplifySum (node: Node) =
                       Right = Some(getWithoutCoef node.Right.Value) }
             | _ -> node
 
-        let nod1 = getWithoutCoef node
-        splitFuncs nod1
-
+        let result = getWithoutCoef node
+        let funcs = splitFuncs result
 
         if funcs.Length = 0 then
-            (coef, nod1.ToString())
+            (coef * sign, result.ToString())
         else
-            let nod = String.Join('*', List.sort funcs)
-            (coef, nod)
+            let sortedFunc = String.Join('*', List.sort funcs)
+            (coef * sign, sortedFunc)
 
     let clearSumFunctions (node: Node) =
-        sumFunctions node
+        let funcs = sumFunctions node
 
-        printfn "sumFunc: %A" (List.map (fun x -> x.ToString()) funcList)
-
-        if funcList.Length = 0 then
+        if funcs.Length = 0 then
             node
         else
-            let arr = List.map (fun x -> split x) funcList
-            printfn "converted: %A" arr
+            let converted = List.map (fun x -> splitFuncs x) funcs
 
-            let rec go (arr: (float * string) list) (item: int) =
+            let rec reduce (arr: (float * string) list) (item: int) =
                 if item = arr.Length then
                     arr
                 else
@@ -527,31 +520,46 @@ let simplifySum (node: Node) =
                     let sum = (List.sumBy (fun x -> fst x) same, snd same[0])
 
                     if fst sum <> 0 then
-                        go (List.append [ sum ] notsame) (item + 1)
+                        reduce (List.append [ sum ] notsame) (item + 1)
                     else
-                        go notsame (item)
+                        reduce notsame (item)
 
-            let data = go arr 0
-            printfn "arr: %A" data
+            let result = reduce converted 0
 
-            let func =
-                String.Join('+', (List.map (fun x -> if fst x = 1. then $"{snd x}" else $"({fst x})*({snd x})") data))
+            if result.Length = 0 then
+                { Value = Some(0.)
+                  Operation = ""
+                  Left = None
+                  Right = None }
+            else
+                let func =
+                    String.Join('+', (List.map (fun x -> if fst x = 1. then $"{snd x}" else $"({fst x})*({snd x})") result))
 
-            convertToFunc func
+                convertToFunc func
 
-    let pre = mulFunction node |> sumNumbers
-    printfn "pre: %s" (pre.ToString())
-    let result = recClearNumbers pre (clearNumbers pre)
-    printfn "result: %s" (result.ToString())
-    let data = clearSumFunctions result
+    let preproc = multiplyFuncs node |> sumNumbers
 
-    printfn "data: %s" (data.ToString())
-    printfn "nt: %f" x0
+    printfn "sSum pre: %s" (preproc.ToString())
 
-    if x0 <> 0 then
+    let result= 
+        clearNumbers preproc 
+        |> recClearNumbers preproc 
+        |> clearSumFunctions
+
+    printfn "sSum func: %s" (result.ToString())
+    printfn "sSum x0: %f" x0
+
+    if x0 = 0 then
+        result
+    elif result.Value.IsSome && result.Value.Value = 0 then
+        { Value = Some(x0)
+                  Operation = ""
+                  Left = None
+                  Right = None }
+    else
         { Value = None
           Operation = "+"
-          Left = Some(data)
+          Left = Some(result)
           Right =
             Some(
                 { Value = Some(x0)
@@ -559,19 +567,33 @@ let simplifySum (node: Node) =
                   Left = None
                   Right = None }
             ) }
-    else
-        data
 
 let expandFunc (node: Node) =
+    let (|Sum|Another|) (node: Node) =
+        if node.Left.IsSome && node.Right.IsSome && (node.Operation = "+" || node.Operation = "-") then
+            Sum
+        else
+            Another
+
+    let isNotComplexExpression (node: Node) =
+        (node.Operation = "x" || isConst node)
+        || (node.Operation = "*"
+            && (node.Left.Value.Operation = "x"
+                || isConst node.Left.Value
+                || isComplexFunction node.Left.Value)
+            && (node.Right.Value.Operation = "x"
+                || isConst node.Right.Value
+                || isComplexFunction node.Right.Value))
+
     let rec multiplyBy (multiplier: Node) (right: Node) =
-        match (right.Left.IsSome, right.Right.IsSome, right.Operation) with
-        | (true, true, val1) when val1 = "+" || val1 = "-" ->
+        match node with
+        | Sum ->
             if
                 (right.Left.Value.Operation <> "+" && right.Left.Value.Operation <> "-")
                 && (right.Right.Value.Operation <> "+" && right.Right.Value.Operation <> "-")
             then
                 { Value = None
-                  Operation = val1
+                  Operation = node.Operation
                   Left =
                     Some(
                         { Value = None
@@ -588,7 +610,7 @@ let expandFunc (node: Node) =
                     ) }
             elif (right.Left.Value.Operation <> "+" && right.Left.Value.Operation <> "-") then
                 { Value = None
-                  Operation = val1
+                  Operation = node.Operation
                   Left =
                     Some(
                         { Value = None
@@ -599,7 +621,7 @@ let expandFunc (node: Node) =
                   Right = Some(multiplyBy multiplier right.Right.Value) }
             elif (right.Right.Value.Operation <> "+" && right.Right.Value.Operation <> "-") then
                 { Value = None
-                  Operation = val1
+                  Operation = node.Operation
                   Left = Some(multiplyBy multiplier right.Left.Value)
                   Right =
                     Some(
@@ -610,38 +632,38 @@ let expandFunc (node: Node) =
                     ) }
             else
                 { Value = None
-                  Operation = val1
+                  Operation = node.Operation
                   Left = Some(multiplyBy multiplier right.Left.Value)
                   Right = Some(multiplyBy multiplier right.Right.Value) }
-        | _ -> failwith "what???"
+        | Another -> failwith "what???"
 
     let rec operation (left: Node) (right: Node) =
-        match (left.Left.IsSome, left.Right.IsSome, left.Operation) with
-        | (true, true, val1) when val1 = "+" || val1 = "-" ->
+        match node with
+        | Sum ->
             if
                 (left.Left.Value.Operation <> "+" && left.Left.Value.Operation <> "-")
                 && (left.Right.Value.Operation <> "+" && left.Right.Value.Operation <> "-")
             then
                 { Value = None
-                  Operation = val1
+                  Operation = node.Operation
                   Left = Some(multiplyBy left.Left.Value right)
                   Right = Some(multiplyBy left.Right.Value right) }
             elif (left.Left.Value.Operation <> "+" && left.Left.Value.Operation <> "-") then
                 { Value = None
-                  Operation = val1
+                  Operation = node.Operation
                   Left = Some(multiplyBy left.Left.Value right)
                   Right = Some(operation left.Right.Value right) }
             elif (left.Right.Value.Operation <> "+" && left.Right.Value.Operation <> "-") then
                 { Value = None
-                  Operation = val1
+                  Operation = node.Operation
                   Left = Some(operation left.Left.Value right)
                   Right = Some(multiplyBy left.Right.Value right) }
             else
                 { Value = None
-                  Operation = val1
+                  Operation = node.Operation
                   Left = Some(operation left.Left.Value right)
                   Right = Some(operation left.Right.Value right) }
-        | _ -> failwith "what???"
+        | Another -> failwith "what???"
 
     let rec findMul (node: Node) =
         match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
@@ -650,17 +672,17 @@ let expandFunc (node: Node) =
                 (node.Left.Value.Operation = "+" || node.Left.Value.Operation = "-")
                 && (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-")
             then
-                operation node.Left.Value node.Right.Value |> simplifySum
+                operation node.Left.Value node.Right.Value //|> simplifySum
             elif
                 (node.Left.Value.Operation = "+" || node.Left.Value.Operation = "-")
                 && (isNotComplexExpression node.Right.Value)
             then
-                multiplyBy node.Right.Value node.Left.Value |> simplifySum
+                multiplyBy node.Right.Value node.Left.Value //|> simplifySum
             elif
                 (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-")
                 && (isNotComplexExpression node.Left.Value)
             then
-                multiplyBy node.Left.Value node.Right.Value |> simplifySum
+                multiplyBy node.Left.Value node.Right.Value //|> simplifySum
             else
                 { Value = None
                   Operation = "*"

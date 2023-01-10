@@ -145,17 +145,6 @@ let isNumber (number: string) =
     // Parse with a dot
     Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
 
-// In developing.
-let isNotComplexExpression (node: Node) =
-    (node.Operation = "x" || isConst node)
-    || (node.Operation = "*"
-        && (node.Left.Value.Operation = "x"
-            || isConst node.Left.Value
-            || isComplexFunction node.Left.Value)
-        && (node.Right.Value.Operation = "x"
-            || isConst node.Right.Value
-            || isComplexFunction node.Right.Value))
-
 // Get the index of the nearest bracket or module.
 let private getClosest rightBracket leftModule =
     if

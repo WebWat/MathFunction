@@ -26,48 +26,61 @@ type Node =
 
         let rec convert2str node =
             match node.Operation with
-            | "" -> if node.Value.Value < 0. then
-                        $"({node.Value.Value})"
-                    else
-                        string node.Value.Value
+            | "" -> 
+                if node.Value.Value < 0. then
+                    $"({node.Value.Value})"
+                else
+                    string node.Value.Value
             | "x" -> "x"
             | "pi" -> "pi"
             | "e" -> "e"
             | "+" -> $"{convert2str node.Left.Value}+{convert2str node.Right.Value}"
-            | "-" -> if needBrackets node.Right.Value &&
+            | "|" -> $"|{convert2str node.Right.Value}|"
+            | "-" -> 
+                if node.Left.Value.Value.IsSome && node.Left.Value.Value.Value = 0 then
+                    if needBrackets node.Right.Value &&
                         // If meet the operation of division or multiplication -> do not put brackets
                         node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
+                        $"-({convert2str node.Right.Value})"
+                    else
+                        $"-{convert2str node.Right.Value}"
+                else
+                    if needBrackets node.Right.Value &&
+                        node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
                         $"{convert2str node.Left.Value}-({convert2str node.Right.Value})"
-                     else
+                    else
                         $"{convert2str node.Left.Value}-{convert2str node.Right.Value}"
-            | "*" -> if needBrackets node.Left.Value &&  node.Left.Value.Operation  <> "/" && node.Left.Value.Operation  <> "*" && 
-                        needBrackets node.Right.Value && node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
-                        $"({convert2str node.Left.Value})*({convert2str node.Right.Value})"
-                     elif needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && node.Left.Value.Operation <> "*" then
-                        $"({convert2str node.Left.Value})*{convert2str node.Right.Value}"
-                     elif needBrackets node.Right.Value && node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
-                        $"{convert2str node.Left.Value}*({convert2str node.Right.Value})"
-                     else
-                        $"{convert2str node.Left.Value}*{convert2str node.Right.Value}"
-            | "/" -> if needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && 
-                        needBrackets node.Right.Value && node.Left.Value.Operation <> "*" then
-                        $"({convert2str node.Left.Value})/({convert2str node.Right.Value})"
-                     elif needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && node.Left.Value.Operation <> "*" then
-                        $"({convert2str node.Left.Value})/{convert2str node.Right.Value}"
-                     elif needBrackets node.Right.Value then
-                        $"{convert2str node.Left.Value}/({convert2str node.Right.Value})"
-                     else
-                        $"{convert2str node.Left.Value}/{convert2str node.Right.Value}"
-            | "^" -> if needBrackets node.Left.Value && needBrackets node.Right.Value then
-                         $"({convert2str node.Left.Value})^({convert2str node.Right.Value})"
-                     elif needBrackets node.Left.Value then
-                         $"({convert2str node.Left.Value})^{convert2str node.Right.Value}"
-                     elif needBrackets node.Right.Value then
-                         $"{convert2str node.Left.Value}^({convert2str node.Right.Value})"
-                     else
-                         $"{convert2str node.Left.Value}^{convert2str node.Right.Value}"
-            | "|"    -> $"|{convert2str node.Right.Value}|"
-            | val1 when Array.exists (fun x -> val1 = x) funcs -> $"{Array.find (fun x -> val1 = x) funcs}({convert2str node.Right.Value})"
+            | "*" -> 
+                if needBrackets node.Left.Value &&  node.Left.Value.Operation  <> "/" && node.Left.Value.Operation  <> "*" && 
+                   needBrackets node.Right.Value && node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
+                    $"({convert2str node.Left.Value})*({convert2str node.Right.Value})"
+                elif needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && node.Left.Value.Operation <> "*" then
+                    $"({convert2str node.Left.Value})*{convert2str node.Right.Value}"
+                elif needBrackets node.Right.Value && node.Right.Value.Operation <> "/" && node.Right.Value.Operation <> "*" then
+                    $"{convert2str node.Left.Value}*({convert2str node.Right.Value})"
+                else
+                    $"{convert2str node.Left.Value}*{convert2str node.Right.Value}"
+            | "/" -> 
+                if needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && 
+                   needBrackets node.Right.Value && node.Left.Value.Operation <> "*" then
+                    $"({convert2str node.Left.Value})/({convert2str node.Right.Value})"
+                elif needBrackets node.Left.Value && node.Left.Value.Operation <> "/" && node.Left.Value.Operation <> "*" then
+                    $"({convert2str node.Left.Value})/{convert2str node.Right.Value}"
+                elif needBrackets node.Right.Value then
+                    $"{convert2str node.Left.Value}/({convert2str node.Right.Value})"
+                else
+                    $"{convert2str node.Left.Value}/{convert2str node.Right.Value}"
+            | "^" -> 
+                if needBrackets node.Left.Value && needBrackets node.Right.Value then
+                    $"({convert2str node.Left.Value})^({convert2str node.Right.Value})"
+                elif needBrackets node.Left.Value then
+                    $"({convert2str node.Left.Value})^{convert2str node.Right.Value}"
+                elif needBrackets node.Right.Value then
+                    $"{convert2str node.Left.Value}^({convert2str node.Right.Value})"
+                else
+                    $"{convert2str node.Left.Value}^{convert2str node.Right.Value}"
+            | val1 when Array.exists (fun x -> val1 = x) funcs -> 
+                $"{Array.find (fun x -> val1 = x) funcs}({convert2str node.Right.Value})"
             | _ -> failwith "[toString] Unknown function, operation, or constant!"
 
         convert2str this
@@ -83,9 +96,9 @@ let isConst (node: Node) =
     Array.contains node.Operation consts
 
 let isNumber (number: string) =
-        let mutable temp = 0.0
-        // Parse with a dot
-        Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
+    let mutable temp = 0.0
+    // Parse with a dot
+    Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
 
 // In developing.
 let isNotComplexExpression (node: Node) =
@@ -101,7 +114,8 @@ let private getClosest rightBracket leftModule =
     elif leftModule <> -1 && (rightBracket = -1  || 
          rightBracket <> -1 && leftModule > rightBracket) then 
          (leftModule, '|')
-    else (-1, '-')
+    else 
+        (-1, '-')
 
 // Returns the first outer brackets indexes.
 let rec private findBracketsIndexes (line: string) (total: int) (current: int) (inc: Operation) =
@@ -125,7 +139,15 @@ let rec private findModulesIndexes (line: string) (total: int) (current: int) (l
         findModulesIndexes line total (current + int inc) false inc
 
 // Looking for a symbol outside the brackets.
-let rec private lookOutside (line: string) (symbol: char) (leftBracket: int) (rightBracket: int) (current: int) (inc: Operation) : int =
+let rec private lookOutside 
+                (line: string) 
+                (symbol: char) 
+                (leftBracket: int) 
+                (rightBracket: int) 
+                (current: int) 
+                (inc: Operation) 
+                : int =
+
     if (leftBracket, rightBracket) = (-1, -1) then 
         if inc = Operation.Dec then line.LastIndexOf(symbol)
         else line.IndexOf(symbol)
@@ -136,12 +158,30 @@ let rec private lookOutside (line: string) (symbol: char) (leftBracket: int) (ri
             current
         // Skip inner
         elif inc = Operation.Dec && current = rightBracket then
-            lookOutside line symbol leftBracket rightBracket (current - (rightBracket - leftBracket) + int inc) inc
+            lookOutside 
+                line 
+                symbol 
+                leftBracket 
+                rightBracket 
+                (current - (rightBracket - leftBracket) + int inc) 
+                inc
         // Skip inner
         elif inc = Operation.Inc && current = leftBracket then
-            lookOutside line symbol leftBracket rightBracket (current + (rightBracket - leftBracket) + int inc) inc
+            lookOutside 
+                line 
+                symbol 
+                leftBracket 
+                rightBracket 
+                (current + (rightBracket - leftBracket) + int inc) 
+                inc
         else
-            lookOutside line symbol leftBracket rightBracket (current + int inc) inc
+            lookOutside 
+                line 
+                symbol 
+                leftBracket 
+                rightBracket 
+                (current + int inc) 
+                inc
 
 // Get the bracket indexes.
 let getBracketsIndexesRight2Left (line: string) =
@@ -164,7 +204,7 @@ let getBracketsIndexesLeft2Right (line: string) =
 let getSymbolIndexRight2Left (leftBracket: int) (rightBracket: int) (symbol: char) (line: string)  =
     // Check that the symbol is not in other brackets
     let rec checkRightSide (line: string) (rLast: int) (rCurrent: int) index =
-        let subLine = line[rLast + 2..]
+        let subLine = line[ rLast + 2 .. ]
         let (left, right) = getBracketsIndexesRight2Left subLine
         
         if left = -1 || right = -1 || (rLast < index && index < left + rLast + 2) then
@@ -184,7 +224,7 @@ let getSymbolIndexRight2Left (leftBracket: int) (rightBracket: int) (symbol: cha
 let getSymbolIndexLeft2Right (leftBracket: int) (rightBracket: int) (symbol: char) (line: string)  =
     // Check that the symbol is not in other brackets
     let rec checkLeftSide (line: string) (lLast: int) index =
-        let subLine = line[..lLast - 2]
+        let subLine = line[ .. lLast - 2 ]
         let (left, right) = getBracketsIndexesLeft2Right subLine
         
         if left = -1 || right = -1 || (right < index && index < lLast) then
@@ -205,7 +245,7 @@ let rec removeExtraBrackets (line: string) =
     let args = getBracketsIndexesLeft2Right line
 
     if line[0] = '(' && args = (0, line.Length - 1) then
-        removeExtraBrackets line[1..line.Length - 2]
+        removeExtraBrackets line[ 1 .. line.Length - 2 ]
     else
         (new string(line), args)
 
@@ -213,27 +253,27 @@ let rec removeExtraBrackets (line: string) =
 let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
     let (lbracket, rbracket) = brackets
 
-    let index = lazy (
+    let index =
         if symbol = '^' then
-            getSymbolIndexRight2Left lbracket rbracket symbol line
+            let (l, r) = getBracketsIndexesRight2Left line
+            getSymbolIndexRight2Left l r symbol line
         else
             getSymbolIndexLeft2Right lbracket rbracket symbol line
-    )
 
-    let comp = lazy(line[rbracket..rbracket + 1].LastIndexOf symbol)
+    let comp = lazy(line[ rbracket .. rbracket + 1 ].LastIndexOf symbol)
 
     // If symbol not found
-    if index.Force() = -1 then
+    if index = -1 then
         ("-", "-")
     // If -number
-    elif symbol = '-' && index.Force() = 0 then
-        ("0", line[1..])
+    elif symbol = '-' && index = 0 then
+        ("0", line[ 1.. ])
     // If multiply, divide and pow (right side only) ???
-    elif lbracket <> -1 && lbracket < index.Force() && symbol <> '+' && symbol <> '-' && comp.Force() <> -1 then
-        (line[0..rbracket], line[rbracket + 2..])
+    elif lbracket <> -1 && lbracket < index && symbol <> '+' && symbol <> '-' && comp.Force() <> -1 then
+        (line[ 0 .. rbracket ], line[ rbracket + 2 .. ])
     // All other operations
     else
-        (line[..index.Force() - 1], line[index.Force() + 1..])
+        (line[ .. index - 1 ], line[ index + 1 .. ])
 
 // Looking for symbols which can split the function.
 let rec searchSymbol (operands: string * string) (line: string) (brackets: int * int) (item: int) =
@@ -303,5 +343,5 @@ let rec calculateFunc (node: Node) (x: float) : float =
     | "th"  -> Math.Tanh (calculateFunc node.Right.Value x)
     | "cth"  -> 1. / Math.Tanh (calculateFunc node.Right.Value x)
     | "sch"  -> 1. / Math.Cosh (calculateFunc node.Right.Value x)
-    | "csch"  -> 1. / Math.Sinh (calculateFunc node.Right.Value x)
+    | "csch" -> 1. / Math.Sinh (calculateFunc node.Right.Value x)
     | _ -> failwith "lol"      

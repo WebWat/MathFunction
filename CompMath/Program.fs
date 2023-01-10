@@ -10,8 +10,9 @@ while true do
     printf "\nInput function: "
     let text = Console.ReadLine() // x*x-x*2-x*3-(2*x-2*2-2*3)-(3*x-3*2-3*3) x^2+x+3-2+2^x+x^2
     let der = convertToFunc text
+    // (x*x^2)^(2)
     printfn "string: %s" (der.ToString())
-    printfn "Derivative string: %s" ((expandFunc der).ToString())
+    printfn "Derivative string: %s" ((simplifyMultiply der).ToString())
     //if text = "clear" then
     //    let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
     //    printfn "Before: %.1f KB" start

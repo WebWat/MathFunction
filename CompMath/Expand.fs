@@ -568,12 +568,23 @@ let simplifySum (node: Node) =
                   Right = None }
             ) }
 
-let expandFunc (node: Node) =
+let multiplyAll (node: Node) =
     let (|Sum|Another|) (node: Node) =
         if node.Left.IsSome && node.Right.IsSome && (node.Operation = "+" || node.Operation = "-") then
             Sum
         else
             Another
+
+    let (|Both|Left|Right|None|) (node: Node) =
+        if (node.Left.Value.Operation <> "+" && node.Left.Value.Operation <> "-")
+            && (node.Right.Value.Operation <> "+" && node.Right.Value.Operation <> "-") then
+            Both
+        elif node.Left.Value.Operation <> "+" && node.Left.Value.Operation <> "-" then
+            Left
+        elif node.Right.Value.Operation <> "+" && node.Right.Value.Operation <> "-" then
+            Right
+        else
+            None
 
     let isNotComplexExpression (node: Node) =
         (node.Operation = "x" || isConst node)
@@ -584,121 +595,198 @@ let expandFunc (node: Node) =
             && (node.Right.Value.Operation = "x"
                 || isConst node.Right.Value
                 || isComplexFunction node.Right.Value))
-
-    let rec multiplyBy (multiplier: Node) (right: Node) =
-        match node with
+    
+    // (1-x)*(x+(2*x-1))
+    // (1-x)*(-x-x)
+    let rec multiplyBy (isNeg: bool) (multiplier: Node) (right: Node) =
+        match right with
         | Sum ->
-            if
-                (right.Left.Value.Operation <> "+" && right.Left.Value.Operation <> "-")
-                && (right.Right.Value.Operation <> "+" && right.Right.Value.Operation <> "-")
-            then
+            printfn "%s * %s -> isNeg: %b" (multiplier.ToString()) (right.ToString()) isNeg
+
+            match right with
+            | Both ->
+                if isNeg then 
+                    {  Value = None
+                       Operation = 
+                           match right.Operation with
+                           | "+" -> "-"
+                           | _ -> "+"
+                       Left =
+                           Some(
+                               if right.Left.Value.Value.IsSome && right.Left.Value.Value.Value < 0 then
+                                   { Value = None
+                                     Operation = "*"
+                                     Left = Some(multiplier)
+                                     Right = right.Left }
+                               else
+                                   { Value = None
+                                     Operation = "-"
+                                     Left = Some(
+                                        { Value = Some(0.)
+                                          Operation = ""
+                                          Left = None
+                                          Right = None }
+                                     )
+                                     Right = Some(
+                                        { Value = None
+                                          Operation = "*"
+                                          Left = Some(multiplier)
+                                          Right = right.Left }
+                                     ) }
+                           )
+                       Right =
+                           Some(
+                               { Value = None
+                                 Operation = "*"
+                                 Left = Some(multiplier)
+                                 Right = right.Right }
+                           ) }
+                else
+                    {   Value = None
+                        Operation = right.Operation
+                        Left =
+                            Some(
+                                { Value = None
+                                  Operation = "*"
+                                  Left = Some(multiplier)
+                                  Right = right.Left }
+                            )
+                        Right =
+                            Some(
+                                { Value = None
+                                  Operation = "*"
+                                  Left = Some(multiplier)
+                                  Right = right.Right }
+                            ) }  
+            | Left ->
                 { Value = None
-                  Operation = node.Operation
+                  Operation = "+"
                   Left =
                     Some(
-                        { Value = None
-                          Operation = "*"
-                          Left = Some(multiplier)
-                          Right = right.Left }
+                        if (isNeg && not (right.Operation = "-"))
+                           || (not isNeg && right.Operation = "-") then
+                            { Value = None
+                              Operation = "-"
+                              Left = Some(
+                              {   Value = Some(0.)
+                                  Operation = ""
+                                  Left = None
+                                  Right = None }
+                              )
+                              Right = Some(
+                              {   Value = None
+                                  Operation = "*"
+                                  Left = Some(multiplier)
+                                  Right = right.Left }
+                              ) }
+                        else
+                            { Value = None
+                              Operation = "*"
+                              Left = Some(multiplier)
+                              Right = right.Left }
                     )
+                  Right = Some(multiplyBy isNeg multiplier right.Right.Value) }
+            | Right ->
+                { Value = None
+                  Operation = "+"
+                  Left = Some(multiplyBy isNeg multiplier right.Left.Value)
                   Right =
                     Some(
-                        { Value = None
-                          Operation = "*"
-                          Left = Some(multiplier)
-                          Right = right.Right }
+                        if (isNeg && not (right.Operation = "-"))
+                           || (not isNeg && right.Operation = "-") then
+                           { Value = None
+                             Operation = "-"
+                             Left = Some(
+                             {   Value = Some(0.)
+                                 Operation = ""
+                                 Left = None
+                                 Right = None }
+                             )
+                             Right = Some(
+                             {   Value = None
+                                 Operation = "*"
+                                 Left = Some(multiplier)
+                                 Right = right.Right }
+                             ) }
+                        else
+                            { Value = None
+                              Operation = "*"
+                              Left = Some(multiplier)
+                              Right = right.Right }
                     ) }
-            elif (right.Left.Value.Operation <> "+" && right.Left.Value.Operation <> "-") then
+            | None ->
                 { Value = None
-                  Operation = node.Operation
-                  Left =
-                    Some(
-                        { Value = None
-                          Operation = "*"
-                          Left = Some(multiplier)
-                          Right = right.Left }
-                    )
-                  Right = Some(multiplyBy multiplier right.Right.Value) }
-            elif (right.Right.Value.Operation <> "+" && right.Right.Value.Operation <> "-") then
-                { Value = None
-                  Operation = node.Operation
-                  Left = Some(multiplyBy multiplier right.Left.Value)
-                  Right =
-                    Some(
-                        { Value = None
-                          Operation = "*"
-                          Left = Some(multiplier)
-                          Right = right.Right }
-                    ) }
-            else
-                { Value = None
-                  Operation = node.Operation
-                  Left = Some(multiplyBy multiplier right.Left.Value)
-                  Right = Some(multiplyBy multiplier right.Right.Value) }
+                  Operation = right.Operation
+                  Left = Some(multiplyBy isNeg multiplier right.Left.Value)
+                  Right = Some(multiplyBy isNeg multiplier right.Right.Value) }
         | Another -> failwith "what???"
 
+    // (-x-x)*(1-x)
     let rec operation (left: Node) (right: Node) =
-        match node with
+        printfn "op with %s %s" (left.ToString()) (right.ToString())
+
+        match left with
         | Sum ->
-            if
-                (left.Left.Value.Operation <> "+" && left.Left.Value.Operation <> "-")
-                && (left.Right.Value.Operation <> "+" && left.Right.Value.Operation <> "-")
-            then
+            match left with
+            | Both ->
+                if left.Left.Value.Value.IsSome && left.Left.Value.Value.Value = 0. then
+                    (multiplyBy (left.Operation = "-") left.Right.Value right)
+                else
+                    { Value = None
+                      Operation = "+"
+                      Left = Some(multiplyBy false left.Left.Value right)
+                      Right = Some(multiplyBy (left.Operation = "-") left.Right.Value right) }
+            | Left ->
                 { Value = None
-                  Operation = node.Operation
-                  Left = Some(multiplyBy left.Left.Value right)
-                  Right = Some(multiplyBy left.Right.Value right) }
-            elif (left.Left.Value.Operation <> "+" && left.Left.Value.Operation <> "-") then
-                { Value = None
-                  Operation = node.Operation
-                  Left = Some(multiplyBy left.Left.Value right)
+                  Operation = "+"
+                  Left = Some(multiplyBy (left.Operation = "-") left.Left.Value right)
                   Right = Some(operation left.Right.Value right) }
-            elif (left.Right.Value.Operation <> "+" && left.Right.Value.Operation <> "-") then
+            | Right ->
                 { Value = None
-                  Operation = node.Operation
+                  Operation = "+"
                   Left = Some(operation left.Left.Value right)
-                  Right = Some(multiplyBy left.Right.Value right) }
-            else
+                  Right = Some(multiplyBy (left.Operation = "-") left.Right.Value right) }
+            | None ->
                 { Value = None
-                  Operation = node.Operation
+                  Operation = "+"
                   Left = Some(operation left.Left.Value right)
                   Right = Some(operation left.Right.Value right) }
         | Another -> failwith "what???"
 
-    let rec findMul (node: Node) =
+    let rec findBranch (node: Node) =
         match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
         | (true, true, "*") ->
             if
                 (node.Left.Value.Operation = "+" || node.Left.Value.Operation = "-")
                 && (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-")
             then
-                operation node.Left.Value node.Right.Value //|> simplifySum
+                operation node.Left.Value node.Right.Value |> simplifySum
             elif
                 (node.Left.Value.Operation = "+" || node.Left.Value.Operation = "-")
                 && (isNotComplexExpression node.Right.Value)
             then
-                multiplyBy node.Right.Value node.Left.Value //|> simplifySum
+                multiplyBy (node.Right.Value.Operation = "-") node.Right.Value node.Left.Value |> simplifySum
             elif
                 (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-")
                 && (isNotComplexExpression node.Left.Value)
             then
-                multiplyBy node.Left.Value node.Right.Value //|> simplifySum
+                multiplyBy (node.Left.Value.Operation = "-") node.Left.Value node.Right.Value |> simplifySum
             else
                 { Value = None
                   Operation = "*"
-                  Left = Some(findMul node.Left.Value)
-                  Right = Some(findMul node.Right.Value) }
+                  Left = Some(findBranch node.Left.Value)
+                  Right = Some(findBranch node.Right.Value) }
         | (true, true, val1) ->
             { Value = None
               Operation = val1
-              Left = Some(findMul node.Left.Value)
-              Right = Some(findMul node.Right.Value) }
+              Left = Some(findBranch node.Left.Value)
+              Right = Some(findBranch node.Right.Value) }
         | _ -> node
 
     let rec recClear (last: Node) (result: Node) =
         if last.ToString() = result.ToString() then
             result
         else
-            recClear result (openBrackets (findMul result))
+            recClear result (findBranch result)
 
-    recClear node (openBrackets (findMul node)) |> simplifySum
+    recClear node (findBranch node) |> simplifySum

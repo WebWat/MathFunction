@@ -65,7 +65,7 @@ type Node =
                         && node.Right.Value.Operation <> "*"
                     then
                         $"-({convert2str node.Right.Value})"
-                    else
+                    else //  x+(-x+2) -> x+-x+2 ??????
                         $"-{convert2str node.Right.Value}"
                 else if
                     needBrackets node.Right.Value

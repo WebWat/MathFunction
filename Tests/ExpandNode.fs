@@ -40,14 +40,15 @@ let ``Symplify sum`` () =
 let ``Multiply all`` () =
     // Simple
     Assert.Equal("(-1)",   (multiplyAll (convertToFunc "-1")).ToString())
-    Assert.Equal("(-1)*x",   (multiplyAll (convertToFunc "-x")).ToString())
+    Assert.Equal("(-1)*x", (multiplyAll (convertToFunc "-x")).ToString())
 
     // Default
-    Assert.Equal("x^2+(-1)*x",   (multiplyAll (convertToFunc "x*(x-1)")).ToString())
-    Assert.Equal("x^2+(-2)*x+1",   (multiplyAll (convertToFunc "(x-1)*(x-1)")).ToString())
-    Assert.Equal("2*x^2+(-2)*x",   (multiplyAll (convertToFunc "(1-x)*(-x-x)")).ToString())
-    Assert.Equal("(-3)*x^2+4*x+(-1)",   (multiplyAll (convertToFunc "(1-x)*(x+2*x-1)")).ToString())
-    Assert.Equal("x^3+6*x^2+11*x+6",   (multiplyAll (convertToFunc "(x+1)*(x+2)*(x+3)")).ToString())
+    Assert.Equal("x^2+(-1)*x",        (multiplyAll (convertToFunc "x*(x-1)")).ToString())
+    Assert.Equal("x^2+(-2)*x+1",      (multiplyAll (convertToFunc "(x-1)*(x-1)")).ToString())
+    Assert.Equal("2*x^2+(-2)*x",      (multiplyAll (convertToFunc "(1-x)*(-x-x)")).ToString())
+    Assert.Equal("(-3)*x^2+4*x+(-1)", (multiplyAll (convertToFunc "(1-x)*(x+2*x-1)")).ToString())
+    Assert.Equal("x^3+6*x^2+11*x+6",  (multiplyAll (convertToFunc "(x+1)*(x+2)*(x+3)")).ToString())
+    Assert.Equal("2*x^2+9*x+9",       (multiplyAll (convertToFunc "((1+0)*(x+2)+(x+1)*(1+0))*(x+3)")).ToString())
 
 [<Fact>]
 let ``Open brackets`` () =

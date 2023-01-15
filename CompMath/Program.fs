@@ -8,7 +8,7 @@ open CompMath
 
 while true do
     printf "\nInput function: "
-    let text = Console.ReadLine() // (1*(x+1)+x*(1+0))*cos(x*(x+1))
+    let text = Console.ReadLine() // (2*x^1*(sin(x)+1)+x^2*(cos(x)+0))*cos(x)+x^2*(sin(x)+1)*(-sin(x))
     //let der = convertToFunc text
     //// (x*x^2)^(2)
     //printfn "string: %s" (der.ToString())

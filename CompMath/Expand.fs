@@ -72,9 +72,7 @@ let openBrackets (node: Node) =
             clearFunc result (operation result)
 
     clearFunc node (operation node)
-
-// (x*x)^4
-// x^x
+       
 // recClear?
 let simplifyMultiply (node: Node) =
     let (|Multiply|Minus|Another|) (node: Node) =
@@ -248,10 +246,8 @@ let simplifyMultiply (node: Node) =
                     )
 
                 convertToFunc func
-
+   
     let data = multiplyNumbers node
-    //printfn "sMul x0: %f" x0
-    //printfn "sMul data : %s" (data.ToString())
 
     match x0 with
     | 0. ->
@@ -266,15 +262,80 @@ let simplifyMultiply (node: Node) =
             { Value = None
               Operation = "*"
               Left =
-                Some(
-                    { Value = Some(x0)
-                      Operation = ""
-                      Left = None
-                      Right = None }
-                )
+                  Some(
+                      { Value = Some(x0)
+                        Operation = ""
+                        Left = None
+                        Right = None }
+                  )
               Right = Some(result) }
         else
             result
+
+let rec multiplyFuncs (node: Node) =
+    match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+    | (true, true, val1) when val1 = "*" || val1 = "^" -> 
+        if 
+            // simplify this shit
+            ((node.Left.Value.Operation = "x" && (isConst node.Right.Value || isComplexFunction node.Right.Value)) 
+            || (node.Right.Value.Operation = "x" && (isConst node.Left.Value || isComplexFunction node.Left.Value)))
+            || ((isConst node.Left.Value && isComplexFunction node.Right.Value) 
+            || (isConst node.Right.Value && isComplexFunction node.Left.Value))
+        then
+            node
+        else
+            simplifyMultiply node
+    | (true, true, val1) when val1 = "+" || val1 = "-" ->
+        if
+            not (isConst node.Left.Value)
+            && node.Left.Value.Operation <> "+"
+            && node.Left.Value.Operation <> "-"
+            && not (isConst node.Left.Value)
+            && node.Right.Value.Operation <> "+"
+            && node.Right.Value.Operation <> "-"
+        then
+            { Value = None
+              Operation = node.Operation
+              Left = Some(simplifyMultiply node.Left.Value)
+              Right = Some(simplifyMultiply node.Right.Value) }
+        elif
+            not (isConst node.Left.Value)
+            && node.Left.Value.Operation <> "+"
+            && node.Left.Value.Operation <> "-"
+        then
+            { Value = None
+              Operation = node.Operation
+              Left = Some(simplifyMultiply node.Left.Value)
+              Right = Some(multiplyFuncs node.Right.Value) }
+        elif
+            not (isConst node.Right.Value)
+            && node.Right.Value.Operation <> "+"
+            && node.Right.Value.Operation <> "-"
+        then
+            { Value = None
+              Operation = node.Operation
+              Left = Some(multiplyFuncs node.Left.Value)
+              Right = Some(simplifyMultiply node.Right.Value) }
+        else
+            { Value = None
+              Operation = node.Operation
+              Left = Some(multiplyFuncs node.Left.Value)
+              Right = Some(multiplyFuncs node.Right.Value) }
+
+    | _ -> node
+
+let isSimple (node: Node) =
+    if 
+        node.Operation = "x"
+        || isConst node
+        || isComplexFunction node
+        || (node.Operation = "^" || node.Operation = "*") 
+               && ((node.Left.Value.Operation = "x" && isConst node.Right.Value) 
+               || (node.Right.Value.Operation = "x" && isConst node.Left.Value))
+    then
+        true 
+    else
+        false
 
 // add cache for sin(x), x ...
 let simplifySum (node: Node) =
@@ -416,48 +477,6 @@ let simplifySum (node: Node) =
                 List.append (sumFunctions node.Left.Value) (sumFunctions node.Right.Value)
         | Another -> []
 
-    let rec multiplyFuncs (node: Node) =
-        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
-        | (true, true, val1) when val1 = "*" || val1 = "^" -> simplifyMultiply node
-        | (true, true, val1) when val1 = "+" || val1 = "-" ->
-            if
-                not (isConst node.Left.Value)
-                && node.Left.Value.Operation <> "+"
-                && node.Left.Value.Operation <> "-"
-                && not (isConst node.Left.Value)
-                && node.Right.Value.Operation <> "+"
-                && node.Right.Value.Operation <> "-"
-            then
-                { Value = None
-                  Operation = node.Operation
-                  Left = Some(simplifyMultiply node.Left.Value)
-                  Right = Some(simplifyMultiply node.Right.Value) }
-            elif
-                not (isConst node.Left.Value)
-                && node.Left.Value.Operation <> "+"
-                && node.Left.Value.Operation <> "-"
-            then
-                { Value = None
-                  Operation = node.Operation
-                  Left = Some(simplifyMultiply node.Left.Value)
-                  Right = Some(multiplyFuncs node.Right.Value) }
-            elif
-                not (isConst node.Right.Value)
-                && node.Right.Value.Operation <> "+"
-                && node.Right.Value.Operation <> "-"
-            then
-                { Value = None
-                  Operation = node.Operation
-                  Left = Some(multiplyFuncs node.Left.Value)
-                  Right = Some(simplifyMultiply node.Right.Value) }
-            else
-                { Value = None
-                  Operation = node.Operation
-                  Left = Some(multiplyFuncs node.Left.Value)
-                  Right = Some(multiplyFuncs node.Right.Value) }
-
-        | _ -> node
-
     let splitFuncs (node: Node) : float * string =
         let mutable coef = 1.
         let mutable sign = 1.
@@ -536,37 +555,35 @@ let simplifySum (node: Node) =
                     String.Join('+', (List.map (fun x -> if fst x = 1. then $"{snd x}" else $"({fst x})*({snd x})") result))
 
                 convertToFunc func
+    
+    match isSimple node with
+    | true -> node
+    | false ->
+        let preproc = multiplyFuncs node |> sumNumbers
 
-    let preproc = multiplyFuncs node |> sumNumbers
+        let result= 
+            clearNumbers preproc 
+            |> recClearNumbers preproc 
+            |> clearSumFunctions
 
-    //printfn "sSum pre: %s" (preproc.ToString())
-
-    let result= 
-        clearNumbers preproc 
-        |> recClearNumbers preproc 
-        |> clearSumFunctions
-
-    //printfn "sSum func: %s" (result.ToString())
-    //printfn "sSum x0: %f" x0
-
-    if x0 = 0 then
-        result
-    elif result.Value.IsSome && result.Value.Value = 0 then
-        { Value = Some(x0)
-                  Operation = ""
-                  Left = None
-                  Right = None }
-    else
-        { Value = None
-          Operation = "+"
-          Left = Some(result)
-          Right =
-            Some(
-                { Value = Some(x0)
-                  Operation = ""
-                  Left = None
-                  Right = None }
-            ) }
+        if x0 = 0 then
+            result
+        elif result.Value.IsSome && result.Value.Value = 0 then
+            { Value = Some(x0)
+                      Operation = ""
+                      Left = None
+                      Right = None }
+        else
+            { Value = None
+              Operation = "+"
+              Left = Some(result)
+              Right =
+                Some(
+                    { Value = Some(x0)
+                      Operation = ""
+                      Left = None
+                      Right = None }
+                ) }
 
 let rec multiplyAll (node: Node) =
     let (|Sum|Another|) (node: Node) =
@@ -585,21 +602,14 @@ let rec multiplyAll (node: Node) =
             Right
         else
             None
-
+    // what about division
     let isNotComplexExpression (node: Node) =
         (node.Operation = "x" || isConst node || isComplexFunction node)
-        || (node.Operation = "*"
-            && (node.Left.Value.Operation = "x"
-                || isConst node.Left.Value
-                || isComplexFunction node.Left.Value)
-            && (node.Right.Value.Operation = "x"
-                || isConst node.Right.Value
-                || isComplexFunction node.Right.Value))
+        || node.Operation = "*" || node.Operation = "^"
     
     let rec multiplyBy (isNeg: bool) (multiplier: Node) (right: Node) =
         match right with
         | Sum ->
-            //printfn "%s * %s -> isNeg: %b" (multiplier.ToString()) (right.ToString()) isNeg
             match right with
             | Both ->
                 if isNeg then 
@@ -765,19 +775,16 @@ let rec multiplyAll (node: Node) =
                 && (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-")
             then
                 operation (multiplyAll node.Left.Value) (multiplyAll node.Right.Value) 
-                    //|> simplifySum
             elif
                 (node.Left.Value.Operation = "+" || node.Left.Value.Operation = "-")
                 && (isNotComplexExpression node.Right.Value)
             then
                 multiplyBy (node.Right.Value.Operation = "-") (multiplyAll node.Right.Value) (multiplyAll node.Left.Value) 
-                    //|> simplifySum
             elif
                 (node.Right.Value.Operation = "+" || node.Right.Value.Operation = "-")
                 && (isNotComplexExpression node.Left.Value)
             then
                 multiplyBy (node.Left.Value.Operation = "-") (multiplyAll node.Left.Value) (multiplyAll node.Right.Value) 
-                    //|> simplifySum
             else
                 { Value = None
                   Operation = "*"

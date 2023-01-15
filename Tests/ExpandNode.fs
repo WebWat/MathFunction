@@ -35,6 +35,7 @@ let ``Symplify sum`` () =
     // Complex
     Assert.Equal("2*cos(x)*sin(x)", (simplifySum (convertToFunc "sin(x)*cos(x)+cos(x)*sin(x)")).ToString())
     Assert.Equal("0", (simplifySum (convertToFunc "2*(x^2)-(-2)*(-x^2)")).ToString())
+    Assert.Equal("x^3+6*x^2+11*x+6", (simplifySum (convertToFunc "x*x*x+x*x*2+x*1*x+x*1*2+3*x*x+3*x*2+3*1*x+3*1*2")).ToString())
 
 [<Fact>]
 let ``Multiply all`` () =

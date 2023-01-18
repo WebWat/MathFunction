@@ -9,10 +9,11 @@ open CompMath
 while true do
     printf "\nInput function: "
     let text = Console.ReadLine() // (2*x^1*(sin(x)+1)+x^2*(cos(x)+0))*cos(x)+x^2*(sin(x)+1)*(-sin(x))
+    //  1-((-1)*cos(-x)+-sin(x))*4 -> 4*cos(-x)+4*sin(x)+1
+    // x*(x+cos(x*(x+x*(x+1))))+2*x*cos((x+(x+1)*x)*x)
     //let der = convertToFunc text
-    //// (x*x^2)^(2)
     //printfn "string: %s" (der.ToString())
-    //printfn "Derivative string: %s" ((multiplyAll der).ToString())
+    //printfn "Derivative string: %s" ((expandFunc der).ToString())
     if text = "clear" then
         let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
         printfn "Before: %.1f KB" start
@@ -33,7 +34,7 @@ while true do
         try
             let func = convertToFunc text
             let der = derivativeFunc func
-            let exp = multiplyAll der
+            let exp = expandFunc der
 
             printfn "Function string: %s" (func.ToString())
             printfn "Derivative string: %s" (der.ToString())

@@ -4,6 +4,7 @@ open Node
 open System
 open System.Text
 
+// 1-(x*(x*(x+1)+1)-x)
 let openBrackets (node: Node) =
     let operation (node: Node) =
         let func = node.ToString()
@@ -25,9 +26,9 @@ let openBrackets (node: Node) =
                 temp[l] <- '`'
                 temp[r] <- '`'
 
-                let (l1, r1) = getBracketsIndexesLeft2Right (new String(temp))
+                let (l1, r1) = getBracketsIndexesRight2Left (new String(temp))
 
-                if l1 = -1 || (r <> rfirst && r1 < r) then
+                if l1 = -1 then
                     l <- -1
                 else
                     r <- r1
@@ -559,7 +560,10 @@ let simplifySum (node: Node) =
     match isSimple node with
     | true -> node
     | false ->
-        let preproc = multiplyFuncs node |> sumNumbers
+        let preproc = 
+            openBrackets node 
+            |> multiplyFuncs 
+            |> sumNumbers
 
         let result= 
             clearNumbers preproc 
@@ -803,4 +807,32 @@ let rec multiplyAll (node: Node) =
         else
             recClear result (findBranch result)
 
-    recClear node (findBranch node) |> simplifySum
+    recClear node (findBranch node)
+
+let rec searchComplex (node: Node) =
+    let result = multiplyAll node |> simplifySum
+
+    let rec findComplex (node: Node) =
+        match (node.Left.IsSome, node.Right.IsSome, node.Operation) with
+        | (false, true, val1) ->
+            { Value = None
+              Operation = val1
+              Left = None
+              Right = Some(searchComplex node.Right.Value) }
+        | (true, true, val1) when val1 = "^" && node.Right.Value.Value.IsSome ->
+            { Value = None
+              Operation = val1
+              Left = Some(searchComplex node.Left.Value)
+              Right = Some(searchComplex node.Right.Value) }
+        | (true, true, val1) ->
+            { Value = None
+              Operation = val1
+              Left = Some(findComplex node.Left.Value)
+              Right = Some(findComplex node.Right.Value) }
+        | _ -> node
+
+
+    findComplex result
+
+let expandFunc (node: Node) =
+    searchComplex node |> simplifySum

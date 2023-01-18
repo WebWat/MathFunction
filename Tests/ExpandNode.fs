@@ -50,6 +50,8 @@ let ``Multiply all`` () =
     Assert.Equal("(-3)*x^2+4*x+(-1)", (multiplyAll (convertToFunc "(1-x)*(x+2*x-1)")).ToString())
     Assert.Equal("x^3+6*x^2+11*x+6",  (multiplyAll (convertToFunc "(x+1)*(x+2)*(x+3)")).ToString())
     Assert.Equal("2*x^2+9*x+9",       (multiplyAll (convertToFunc "((1+0)*(x+2)+(x+1)*(1+0))*(x+3)")).ToString())
+    Assert.Equal("2*cos(x)*sin(x)*x+2*cos(x)*x+cos(x)^2*x^2", 
+        (multiplyAll (convertToFunc "(2*x^1*(sin(x)+1)+x^2*(cos(x)+0))*cos(x)")).ToString())
 
 [<Fact>]
 let ``Open brackets`` () =
@@ -63,6 +65,7 @@ let ``Open brackets`` () =
     // Complex
     Assert.Equal("x+sin(x+2)*x-1",   (openBrackets (convertToFunc "x-(-sin(x+2)*x+1)")).ToString())
     Assert.Equal("sin(x-cos(2+x)-2)",   (openBrackets (convertToFunc "sin(x-(cos(2+x)+2))")).ToString())
+    //Assert.Equal("1-((-1)*cos(-x)-sin(x))*4",   (openBrackets (convertToFunc "1-((-1)*cos(-x)-sin(x))*4")).ToString())
 
 
 

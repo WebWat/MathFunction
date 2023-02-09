@@ -25,9 +25,9 @@ type NodeTest() = class
     //member this.Calculate() =
     //    calculateFunc node 0.05
 
-    [<Benchmark>]
-    member this.MultiplyAll() =
-         multiplyAll node2
+    //[<Benchmark>]
+    //member this.MultiplyAll() =
+    //     multiplyAll node2
 end
         
 

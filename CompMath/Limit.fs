@@ -59,5 +59,5 @@ let limit (func: float -> float) (x: float) (accuracy: int) (position: Position)
     else
         result
 
-let derivative (func: Node) (point: float) =
-    limit (fun x -> ((calculateFunc func (point + x) - calculateFunc func point) / x)) 0 6 Position.Left
+//let derivative (func: Node) (point: float) =
+//    limit (fun x -> ((calculateFunc func (point + x) - calculateFunc func point) / x)) 0 6 Position.Left

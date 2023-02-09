@@ -36,8 +36,8 @@ namespace UI
                 }
                 else
                 {
-                    var func = new Function(text.Text);
-                    result.Text = func.Calc(0).ToString("f3");
+                    var func = new FunctionX(text.Text);
+                   // result.Text = func.Calc(0).ToString("f3");
                 }
             }
             catch { }

@@ -4,6 +4,9 @@ open System
 open System.Globalization
 open System.Text.RegularExpressions
 
+exception UnknownOperation of string
+exception ArgumentNotExist of string
+
 let funcs =
     [| "ln"
        "lg"
@@ -25,6 +28,8 @@ let funcs =
        "sch"
        "csch" |]
 
+let allowedArgs = [| "a"; "b"; "c"; "d"; "f"; "g"; "h"; "i"; "g"; "k"; "l"; "m"; "n"; "o"; "p"; "q"; "r"; "s"; "t"; "u"; "v"; "w"; "x"; "y"; "z" |]
+
 let consts = [| "pi"; "e"; "" |]
 
 let symbols = [| '+'; '-'; '*'; '/'; '^' |]
@@ -37,10 +42,10 @@ type Node =
 
     override this.ToString() =
         let needBrackets (node: Node) =
-            node.Operation <> "x"
-            && node.Operation <> "|"
+            node.Operation <> "|"
             && node.Operation <> "^"
             && not (Array.contains node.Operation consts)
+            && not (Array.contains node.Operation allowedArgs)
             && not (Array.contains node.Operation funcs)
 
         let rec convert2str node =
@@ -50,9 +55,6 @@ type Node =
                     $"({node.Value.Value})"
                 else
                     string node.Value.Value
-            | "x" -> "x"
-            | "pi" -> "pi"
-            | "e" -> "e"
             | "+" -> $"{convert2str node.Left.Value}+{convert2str node.Right.Value}"
             | "|" -> $"|{convert2str node.Right.Value}|"
             | "-" ->
@@ -65,7 +67,7 @@ type Node =
                         && node.Right.Value.Operation <> "*"
                     then
                         $"-({convert2str node.Right.Value})"
-                    else //  x+(-x+2) -> x+-x+2 ??????
+                    else
                         $"-{convert2str node.Right.Value}"
                 else if
                     needBrackets node.Right.Value
@@ -126,9 +128,13 @@ type Node =
                     $"{convert2str node.Left.Value}^({convert2str node.Right.Value})"
                 else
                     $"{convert2str node.Left.Value}^{convert2str node.Right.Value}"
+            | val1 when 
+                Array.contains val1 allowedArgs 
+                || Array.contains val1 consts ->  
+                val1
             | val1 when Array.exists (fun x -> val1 = x) funcs ->
                 $"{Array.find (fun x -> val1 = x) funcs}({convert2str node.Right.Value})"
-            | _ -> failwith "[toString] Unknown function, operation, or constant!"
+            | _ -> raise (UnknownOperation node.Operation)
 
         convert2str this
 
@@ -140,8 +146,11 @@ let isComplexFunction (node: Node) = Array.contains node.Operation funcs
 
 let isConst (node: Node) = Array.contains node.Operation consts
 
+let isArg (node: Node) = Array.contains node.Operation allowedArgs
+
 let isNumber (number: string) =
-    let mutable temp = 0.0
+    let mutable temp = 0.
+
     // Parse with a dot
     Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
 
@@ -320,7 +329,7 @@ let rec searchSymbol (operands: string * string) (line: string) (brackets: int *
     match operands with
     | ("-", "-") ->
         if item + 1 = symbols.Length then
-            failwith "Unknow operation"
+            raise (UnknownOperation line)
         else
             searchSymbol (breakLine brackets (symbols[item + 1]) line) line brackets (item + 1)
     | (val1, val2) -> (val1, val2, item)
@@ -335,23 +344,17 @@ let convertToFunc (line: string) : Node =
         //printfn "l: %d r: %d => %s" l r removed
 
         match removed with
-        | "x" ->
+        | val1 when 
+            Array.contains val1 allowedArgs
+            || Array.contains val1 consts
+            ->
             { Value = None
-              Operation = "x"
-              Left = None
-              Right = None }
-        | "pi" ->
-            { Value = None
-              Operation = "pi"
-              Left = None
-              Right = None }
-        | "e" ->
-            { Value = None
-              Operation = "e"
+              Operation = val1
               Left = None
               Right = None }
         | val1 when isNumber (val1) ->
-            { Value = Some(float val1)
+            { Value = Some 
+                (Double.Parse (val1.AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture))
               Operation = ""
               Right = None
               Left = None }
@@ -377,7 +380,6 @@ let convertToFunc (line: string) : Node =
                   Operation = string symbols[i]
                   Left = Some(convert (lft))
                   Right = Some(convert (rght)) }
-
         | _ ->
             let (lft, rght, i) =
                 searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
@@ -389,35 +391,38 @@ let convertToFunc (line: string) : Node =
 
     convert (line.Replace(" ", ""))
 
-let rec calculateFunc (node: Node) (x: float) : float =
+let rec calculateFunc (node: Node) (args: Map<string, float>) : float =
     match node.Operation with
     | "" -> node.Value.Value
-    | "x" -> x
+    | val1 when isArg node ->
+        match args.TryFind val1 with
+        | Some arg -> arg
+        | _ -> raise (ArgumentNotExist val1)
     | "pi" -> Math.PI
     | "e" -> Math.E
-    | "+" -> calculateFunc node.Left.Value x + calculateFunc node.Right.Value x
-    | "-" -> calculateFunc node.Left.Value x - calculateFunc node.Right.Value x
-    | "*" -> calculateFunc node.Left.Value x * calculateFunc node.Right.Value x
-    | "/" -> calculateFunc node.Left.Value x / calculateFunc node.Right.Value x
-    | "^" -> Math.Pow(calculateFunc node.Left.Value x, calculateFunc node.Right.Value x)
-    | "|" -> Math.Abs(calculateFunc node.Right.Value x)
-    | "ln" -> Math.Log(calculateFunc node.Right.Value x)
-    | "lg" -> Math.Log10(calculateFunc node.Right.Value x)
-    | "sin" -> Math.Sin(calculateFunc node.Right.Value x)
-    | "cos" -> Math.Cos(calculateFunc node.Right.Value x)
-    | "sqrt" -> Math.Sqrt(calculateFunc node.Right.Value x)
-    | "log2" -> Math.Log2(calculateFunc node.Right.Value x)
-    | "tg" -> Math.Tan(calculateFunc node.Right.Value x)
-    | "ctg" -> 1. / Math.Tan(calculateFunc node.Right.Value x)
-    | "exp" -> Math.Exp(calculateFunc node.Right.Value x)
-    | "arcsin" -> Math.Asin(calculateFunc node.Right.Value x)
-    | "arccos" -> Math.Acos(calculateFunc node.Right.Value x)
-    | "arctg" -> Math.Atan(calculateFunc node.Right.Value x)
-    | "arcctg" -> Math.PI / 2. - Math.Atan(calculateFunc node.Right.Value x)
-    | "sh" -> Math.Sinh(calculateFunc node.Right.Value x)
-    | "ch" -> Math.Cosh(calculateFunc node.Right.Value x)
-    | "th" -> Math.Tanh(calculateFunc node.Right.Value x)
-    | "cth" -> 1. / Math.Tanh(calculateFunc node.Right.Value x)
-    | "sch" -> 1. / Math.Cosh(calculateFunc node.Right.Value x)
-    | "csch" -> 1. / Math.Sinh(calculateFunc node.Right.Value x)
-    | _ -> failwith "lol"
+    | "+" -> calculateFunc node.Left.Value args + calculateFunc node.Right.Value args
+    | "-" -> calculateFunc node.Left.Value args - calculateFunc node.Right.Value args
+    | "*" -> calculateFunc node.Left.Value args * calculateFunc node.Right.Value args
+    | "/" -> calculateFunc node.Left.Value args / calculateFunc node.Right.Value args
+    | "^" -> Math.Pow(calculateFunc node.Left.Value args, calculateFunc node.Right.Value args)
+    | "|" -> Math.Abs(calculateFunc node.Right.Value args)
+    | "ln" -> Math.Log(calculateFunc node.Right.Value args)
+    | "lg" -> Math.Log10(calculateFunc node.Right.Value args)
+    | "sin" -> Math.Sin(calculateFunc node.Right.Value args)
+    | "cos" -> Math.Cos(calculateFunc node.Right.Value args)
+    | "sqrt" -> Math.Sqrt(calculateFunc node.Right.Value args)
+    | "log2" -> Math.Log2(calculateFunc node.Right.Value args)
+    | "tg" -> Math.Tan(calculateFunc node.Right.Value args)
+    | "ctg" -> 1. / Math.Tan(calculateFunc node.Right.Value args)
+    | "exp" -> Math.Exp(calculateFunc node.Right.Value args)
+    | "arcsin" -> Math.Asin(calculateFunc node.Right.Value args)
+    | "arccos" -> Math.Acos(calculateFunc node.Right.Value args)
+    | "arctg" -> Math.Atan(calculateFunc node.Right.Value args)
+    | "arcctg" -> Math.PI / 2. - Math.Atan(calculateFunc node.Right.Value args)
+    | "sh" -> Math.Sinh(calculateFunc node.Right.Value args)
+    | "ch" -> Math.Cosh(calculateFunc node.Right.Value args)
+    | "th" -> Math.Tanh(calculateFunc node.Right.Value args)
+    | "cth" -> 1. / Math.Tanh(calculateFunc node.Right.Value args)
+    | "sch" -> 1. / Math.Cosh(calculateFunc node.Right.Value args)
+    | "csch" -> 1. / Math.Sinh(calculateFunc node.Right.Value args)
+    | _ -> raise (UnknownOperation node.Operation)

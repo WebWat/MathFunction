@@ -2,43 +2,42 @@
 
 open Node
 
-let rec derivativeFunc (node: Node) : Node =
+let rec derivativeFunc (node: Node) (d: string) : Node =
     match node.Operation with
-    | ""
-    | "pi"
-    | "e" ->
+    | val1 when isConst(node) ->
         { Value = Some(0.)
           Operation = ""
           Left = None
           Right = None }
-    | "x" ->
+    | val1 when val1 = d ->
         { Value = Some(1.)
           Operation = ""
           Left = None
-          Right = None }
+          Right = None } 
     | "+"
     | "-" ->
         { Value = None
           Operation = node.Operation
-          Left = Some(derivativeFunc node.Left.Value)
-          Right = Some(derivativeFunc node.Right.Value) }
-    | "*" -> // x * a
-        if node.Left.Value.Operation = "x" && isConst node.Right.Value then
+          Left = Some(derivativeFunc node.Left.Value d)
+          Right = Some(derivativeFunc node.Right.Value d) }
+    | "*" -> 
+        // x * a
+        if node.Left.Value.Operation = d && isConst node.Right.Value then
             node.Right.Value
         // a * x
-        elif node.Right.Value.Operation = "x" && isConst node.Left.Value then
+        elif node.Right.Value.Operation = d && isConst node.Left.Value then
             node.Left.Value
         // a * f(x)
         elif isConst node.Left.Value then
             { Value = None
               Operation = "*"
-              Left = Some(derivativeFunc node.Right.Value)
+              Left = Some(derivativeFunc node.Right.Value d)
               Right = node.Left }
         // f(x) * a
         elif isConst node.Right.Value then
             { Value = None
               Operation = "*"
-              Left = Some(derivativeFunc node.Left.Value)
+              Left = Some(derivativeFunc node.Left.Value d)
               Right = node.Right }
         // f(x) * f(x)
         else
@@ -48,7 +47,7 @@ let rec derivativeFunc (node: Node) : Node =
                 Some(
                     { Value = None
                       Operation = "*"
-                      Left = Some(derivativeFunc node.Left.Value)
+                      Left = Some(derivativeFunc node.Left.Value d)
                       Right = Some(node.Right.Value) }
                 )
               Right =
@@ -56,19 +55,13 @@ let rec derivativeFunc (node: Node) : Node =
                     { Value = None
                       Operation = "*"
                       Left = Some(node.Left.Value)
-                      Right = Some(derivativeFunc node.Right.Value) }
+                      Right = Some(derivativeFunc node.Right.Value d) }
                 ) }
     | "/" -> // a/x
-        if isConst node.Left.Value && node.Right.Value.Operation = "x" then
+        if isConst node.Left.Value && node.Right.Value.Operation = d then
             { Value = None
               Operation = "-"
-              Left =
-                Some(
-                    { Value = Some(0.)
-                      Operation = ""
-                      Left = None
-                      Right = None }
-                )
+              Left = Some(convertToFunc "0")
               Right =
                 Some(
                     { Value = None
@@ -81,7 +74,7 @@ let rec derivativeFunc (node: Node) : Node =
                               Left =
                                 Some(
                                     { Value = None
-                                      Operation = "x"
+                                      Operation = d
                                       Left = None
                                       Right = None }
                                 )
@@ -95,7 +88,7 @@ let rec derivativeFunc (node: Node) : Node =
                         ) }
                 ) }
         // x/a
-        elif isConst node.Right.Value && node.Left.Value.Operation = "x" then
+        elif isConst node.Right.Value && node.Left.Value.Operation = d then
             { Value = None
               Operation = "/"
               Left =
@@ -121,7 +114,7 @@ let rec derivativeFunc (node: Node) : Node =
                 Some(
                     { Value = None
                       Operation = "/"
-                      Left = Some(derivativeFunc node.Right.Value)
+                      Left = Some(derivativeFunc node.Right.Value d)
                       Right =
                         Some(
                             { Value = None
@@ -153,7 +146,7 @@ let rec derivativeFunc (node: Node) : Node =
                         )
                       Right = node.Right }
                 )
-              Right = Some(derivativeFunc node.Left.Value) }
+              Right = Some(derivativeFunc node.Left.Value d) }
         // f(x)/f(x)
         else
             { Value = None
@@ -164,17 +157,17 @@ let rec derivativeFunc (node: Node) : Node =
                       Operation = "-"
                       Left =
                         Some(
-                            { Value = Some(0.)
+                            { Value = None
                               Operation = "*"
-                              Left = Some(derivativeFunc node.Left.Value)
+                              Left = Some(derivativeFunc node.Left.Value d)
                               Right = node.Right }
                         )
                       Right =
                         Some(
-                            { Value = Some(0.)
+                            { Value = None
                               Operation = "*"
                               Left = node.Left
-                              Right = Some(derivativeFunc node.Right.Value) }
+                              Right = Some(derivativeFunc node.Right.Value d) }
                         ) }
                 )
               Right =
@@ -191,7 +184,7 @@ let rec derivativeFunc (node: Node) : Node =
                         ) }
                 ) }
     | "^" -> // x^a
-        if node.Left.Value.Operation = "x" && isConst node.Right.Value then
+        if node.Left.Value.Operation = d && isConst node.Right.Value then
             { Value = None
               Operation = "*"
               Left = node.Right
@@ -243,7 +236,7 @@ let rec derivativeFunc (node: Node) : Node =
                                 ) }
                         ) }
                 )
-              Right = Some(derivativeFunc node.Left.Value) }
+              Right = Some(derivativeFunc node.Left.Value d) }
         // a^f(x)
         elif isConst node.Left.Value then
             { Value = None
@@ -267,7 +260,7 @@ let rec derivativeFunc (node: Node) : Node =
                                 ) }
                         ) }
                 )
-              Right = Some(derivativeFunc node.Left.Value) }
+              Right = Some(derivativeFunc node.Left.Value d) }
         // f(x)^f(x)
         else
             derivativeFunc
@@ -286,18 +279,18 @@ let rec derivativeFunc (node: Node) : Node =
                                   Left = None
                                   Right = node.Left }
                             ) }
-                    ) }
+                    ) } d
     | "exp" -> // e^x
-        if node.Right.Value.Operation = "x" then
+        if node.Right.Value.Operation = d then
             node
         // e^f(x)
         else
             { Value = None
               Operation = "*"
-              Left = Some(derivativeFunc node.Right.Value)
+              Left = Some(derivativeFunc node.Right.Value d)
               Right = Some(node) }
     | "ln" -> // ln(x)
-        if node.Right.Value.Operation = "x" then
+        if node.Right.Value.Operation = d then
             { Value = None
               Operation = "/"
               Left =
@@ -325,9 +318,9 @@ let rec derivativeFunc (node: Node) : Node =
                         )
                       Right = node.Right }
                 )
-              Right = Some(derivativeFunc node.Right.Value) }
+              Right = Some(derivativeFunc node.Right.Value d) }
     | "sin" -> // sin(x)
-        if node.Right.Value.Operation = "x" then
+        if node.Right.Value.Operation = d then
             { Value = None
               Operation = "cos"
               Left = None
@@ -336,7 +329,7 @@ let rec derivativeFunc (node: Node) : Node =
         else
             { Value = None
               Operation = "*"
-              Left = Some(derivativeFunc node.Right.Value)
+              Left = Some(derivativeFunc node.Right.Value d)
               Right =
                 Some(
                     { Value = None
@@ -345,7 +338,7 @@ let rec derivativeFunc (node: Node) : Node =
                       Right = node.Right }
                 ) }
     | "cos" -> // cos(x)
-        if node.Right.Value.Operation = "x" then
+        if node.Right.Value.Operation = d then
             { Value = None
               Operation = "-"
               Left =
@@ -366,7 +359,7 @@ let rec derivativeFunc (node: Node) : Node =
         else
             { Value = None
               Operation = "*"
-              Left = Some(derivativeFunc node.Right.Value)
+              Left = Some(derivativeFunc node.Right.Value d)
               Right =
                 Some(
                     { Value = None

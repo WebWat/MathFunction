@@ -64,25 +64,18 @@ let ``Operation priority`` () =
     Assert.Equal(-5., calculator "2*2/2+3^2-4*4")
 
 [<Fact>]
-let ``Operation with brackets`` () =
-    Assert.Equal(0., calculator "2+(-2)")
-    Assert.Equal(0.125, calculator "2^(-3)")
-    Assert.Equal(-8., calculator "(2+2)*(-2)")
-    Assert.Equal(0., calculator "(2+2)*(2-2)")
-    Assert.Equal(3., calculator "1+(2*(2/(1+1)))")
-    Assert.Equal(3., calculator "(((1+1)/2)*2)+1")
-    Assert.Equal(16., calculator "((2*(3+1))/(2-1*1))*(1+1)")
-    Assert.Equal(256., calculator "((2^2)^2)^2")
-    Assert.Equal(8., calculator "32/(16/(8/(4/2)))")
-
-[<Fact>]
-let ``Operation with modules`` () =
+let ``Operation with modules and brackets`` () =
     Assert.Equal(4., calculator "|-2|*2")
-    Assert.Equal(4., calculator "|2|*2")
-    Assert.Equal(9., calculator "|2+1|*|1+2|")
-    Assert.Equal(3., calculator "|||1-2|-2|-2|+|-2|")
-    Assert.Equal(4., calculator "|-2+|2-|-2|||*|-2|")
-    Assert.Equal(3., calculator "||-1|+1+|-1||*|-1|")
+    Assert.Equal(-4., calculator "|2|*(-2)")
+    Assert.Equal(9., calculator "(2+1)*|1+2|")
+    Assert.Equal(-1., calculator "||(1-2)-2|-2|+(-2)")
+    Assert.Equal(4., calculator "|-2+|2-(-2)||*|-2|")
+    Assert.Equal(3., calculator "(|-1|+1+|-1|)*|-1|")
+    Assert.Equal(256., calculator "((2^2)^2)^2")
+    Assert.Equal(256., calculator "|-(2^2)^2|^2")
+    Assert.Equal(8., calculator "32/(16/(8/(4/2)))")
+    Assert.Equal(8., calculator "32/|16/(8/|-4/2|)|")
+    Assert.Equal(16., calculator "((2*(3+1))/|(2-1)*1|)*(1+1)")
 
 [<Fact>]
 let ``Operation with functions`` () =
@@ -115,9 +108,11 @@ let ``Functions with parametrs`` () =
 
     Assert.Equal(-9., calculateFunc (convertToFunc "-a^b") (Map [("a", 3); ("b", 2)]))
 
+
 [<Fact>]
 let ``Exceptions`` () =
-    Assert.Throws<UnknownOperation>(new Action(fun _ -> convertToFunc "awdh9q7yd3+7ax&^&"; ()))
+    Assert.Throws<UnknownOperation>(new Action(fun _ -> 
+        convertToFunc "awdh9q7yd3+7ax&^&"; ()))
     Assert.Throws<ArgumentNotExist>(new Action(fun _ -> 
         calculateFunc (convertToFunc "x^2+2*x+2") (Map []); ()))
 

@@ -341,7 +341,7 @@ let convertToFunc (line: string) : Node =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
-        printfn "l: %d r: %d => %s" l r removed
+        //printfn "l: %d r: %d => %s" l r removed
 
         match removed with
         | val1 when 
@@ -393,11 +393,7 @@ let convertToFunc (line: string) : Node =
 
 let rec calculateFunc (node: Node) (args: Map<string, float>) : float =
     match node.Operation with
-    | "" -> node.Value.Value
-    | val1 when isArg node ->
-        match args.TryFind val1 with
-        | Some arg -> arg
-        | _ -> raise (ArgumentNotExist val1)
+    | "" -> node.Value.Value    
     | "pi" -> Math.PI
     | "e" -> Math.E
     | "+" -> calculateFunc node.Left.Value args + calculateFunc node.Right.Value args
@@ -425,4 +421,8 @@ let rec calculateFunc (node: Node) (args: Map<string, float>) : float =
     | "cth" -> 1. / Math.Tanh(calculateFunc node.Right.Value args)
     | "sch" -> 1. / Math.Cosh(calculateFunc node.Right.Value args)
     | "csch" -> 1. / Math.Sinh(calculateFunc node.Right.Value args)
+    | val1 when isArg node ->
+        match args.TryFind val1 with
+        | Some arg -> arg
+        | _ -> raise (ArgumentNotExist val1)
     | _ -> raise (UnknownOperation node.Operation)

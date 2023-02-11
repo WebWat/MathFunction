@@ -1,16 +1,12 @@
 ﻿open System
 open System.Diagnostics
 open Node
-open Expand
 open Derivative
 open CompMath
 
 while true do
     printf "\nInput function: "
-    let text = Console.ReadLine() 
-
-    //let der = convertToFunc text
-    //printfn "string: %s" (der.ToString())
+    let text = Console.ReadLine()
 
     if text = "clear" then
         let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))

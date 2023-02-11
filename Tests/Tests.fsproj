@@ -8,11 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="ConvertTests.fs" />
+    <Compile Include="ConvertAndCalculate.fs" />
     <Compile Include="ExpandNode.fs" />
     <Compile Include="NodeFunctions.fs" />
-    <Compile Include="ConvertAndCalculate.fs" />
-    <Compile Include="Limits.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

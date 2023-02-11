@@ -32,7 +32,7 @@ let allowedArgs = [| "a"; "b"; "c"; "d"; "f"; "g"; "h"; "i"; "g"; "k"; "l"; "m";
 
 let consts = [| "pi"; "e"; "" |]
 
-let symbols = [| '+'; '-'; '*'; '/'; '^' |]
+let operations = [| '+'; '-'; '*'; '/'; '^' |]
 
 type Node =
     { Value: Option<float>
@@ -328,10 +328,10 @@ let rec breakLine (brackets: int * int) (symbol: char) (line: string) =
 let rec searchSymbol (operands: string * string) (line: string) (brackets: int * int) (item: int) =
     match operands with
     | ("-", "-") ->
-        if item + 1 = symbols.Length then
+        if item + 1 = operations.Length then
             raise (UnknownOperation line)
         else
-            searchSymbol (breakLine brackets (symbols[item + 1]) line) line brackets (item + 1)
+            searchSymbol (breakLine brackets (operations[item + 1]) line) line brackets (item + 1)
     | (val1, val2) -> (val1, val2, item)
 
 
@@ -341,7 +341,7 @@ let convertToFunc (line: string) : Node =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
-        //printfn "l: %d r: %d => %s" l r removed
+        printfn "l: %d r: %d => %s" l r removed
 
         match removed with
         | val1 when 
@@ -374,18 +374,18 @@ let convertToFunc (line: string) : Node =
                   Right = Some(convert (val1[l + 1 .. r - 1])) }
             | _ ->
                 let (lft, rght, i) =
-                    searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
+                    searchSymbol (breakLine (l, r) operations[0] removed) removed (l, r) 0
 
                 { Value = None
-                  Operation = string symbols[i]
+                  Operation = string operations[i]
                   Left = Some(convert (lft))
                   Right = Some(convert (rght)) }
         | _ ->
             let (lft, rght, i) =
-                searchSymbol (breakLine (l, r) symbols[0] removed) removed (l, r) 0
+                searchSymbol (breakLine (l, r) operations[0] removed) removed (l, r) 0
 
             { Value = None
-              Operation = string symbols[i]
+              Operation = string operations[i]
               Left = Some(convert (lft))
               Right = Some(convert (rght)) }
 

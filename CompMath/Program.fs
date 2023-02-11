@@ -2,7 +2,6 @@
 open System.Diagnostics
 open Node
 open Expand
-open Limit
 open Derivative
 open CompMath
 

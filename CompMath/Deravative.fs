@@ -2,6 +2,7 @@
 
 open Node
 
+#if false
 let rec derivativeFunc (node: Node) (d: string) : Node =
     match node.Operation with
     | val1 when isConst(node) ->
@@ -379,4 +380,5 @@ let rec derivativeFunc (node: Node) (d: string) : Node =
                               Right = node.Right }
                         ) }
                 ) }
-    | _ -> failwith "Unknown operation"
+    | _ -> failwith "Unknown operation
+#endif

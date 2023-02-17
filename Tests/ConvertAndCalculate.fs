@@ -67,6 +67,7 @@ let ``Operation priority`` () =
 let ``Operation with modules and brackets`` () =
     Assert.Equal(4., calculator "|-2|*2")
     Assert.Equal(-4., calculator "|2|*(-2)")
+    Assert.Equal(64., calculator "(-(2+2)*2)^2")
     Assert.Equal(9., calculator "(2+1)*|1+2|")
     Assert.Equal(-1., calculator "||(1-2)-2|-2|+(-2)")
     Assert.Equal(4., calculator "|-2+|2-(-2)||*|-2|")
@@ -101,12 +102,12 @@ let ``Complex operation`` () =
 // TODO: Need more!
 [<Fact>]
 let ``Functions with parametrs`` () =
-    Assert.Equal(14., calculateFunc (convertToFunc "x^3+2*x+2") (Map [("x", 2)]))
-    Assert.Equal(-10., calculateFunc (convertToFunc "x^3+2*x+2") (Map [("x", -2)]))
+    Assert.Equal(14., calculateFunc (convertToFunc "x^3+2*x+2") (Map [('x', 2)]))
+    Assert.Equal(-10., calculateFunc (convertToFunc "x^3+2*x+2") (Map [('x', -2)]))
 
-    Assert.Equal(2., calculateFunc (convertToFunc "x*2/x") (Map [("x", Math.PI)]))
+    Assert.Equal(2., calculateFunc (convertToFunc "x*2/x") (Map [('x', Math.PI)]))
 
-    Assert.Equal(-9., calculateFunc (convertToFunc "-a^b") (Map [("a", 3); ("b", 2)]))
+    Assert.Equal(-9., calculateFunc (convertToFunc "-a^b") (Map [('a', 3); ('b', 2)]))
 
 
 [<Fact>]
@@ -115,5 +116,7 @@ let ``Exceptions`` () =
         convertToFunc "awdh9q7yd3+7ax&^&"; ()))
     Assert.Throws<ArgumentNotExist>(new Action(fun _ -> 
         calculateFunc (convertToFunc "x^2+2*x+2") (Map []); ()))
+    Assert.Throws<InvalidBracket>(new Action(fun _ -> 
+        convertToFunc "(2+3))"; ()))
 
 

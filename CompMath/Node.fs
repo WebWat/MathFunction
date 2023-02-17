@@ -77,72 +77,72 @@ type Node =
             match node.Operation with
             | '\u0000'  ->
                 if node.Value < 0. then
-                    $"({node.Value})"
+                    "(" + (string node.Value) + ")"
                 else
                     string node.Value
-            | '+' -> $"{convert2str node.Left.Value}+{convert2str node.Right.Value}"
-            | '|' -> $"|{convert2str node.Right.Value}|"
+            | '+' -> convert2str node.Left.Value + "+" + convert2str node.Right.Value
+            | '|' -> "|" + convert2str node.Right.Value + "|"
             | '-' ->
-                if node.Left.Value.Operation <> '\u0000' && node.Left.Value.Value = 0 then
+                if node.Left.Value.Operation = '\u0000' && node.Left.Value.Value = 0 then
                     if
                         needBracketsComp node.Right.Value
                     then
-                        $"-({convert2str node.Right.Value})"
+                        "-(" + convert2str node.Right.Value + ")"
                     else
-                        $"-{convert2str node.Right.Value}"
+                        "-" + convert2str node.Right.Value
                 else if
                     needBracketsComp node.Right.Value
                 then
-                    $"{convert2str node.Left.Value}-({convert2str node.Right.Value})"
+                    convert2str node.Left.Value + "-(" + convert2str node.Right.Value + ")"
                 else
-                    $"{convert2str node.Left.Value}-{convert2str node.Right.Value}"
+                   convert2str node.Left.Value + "-" + convert2str node.Right.Value
             | '*' ->
                 if
                     needBracketsComp node.Left.Value
                     && needBracketsComp node.Right.Value
                 then
-                    $"({convert2str node.Left.Value})*({convert2str node.Right.Value})"
+                    "(" + convert2str node.Left.Value+")*("+convert2str node.Right.Value + ")"
                 elif
                     needBracketsComp node.Left.Value
                 then
-                    $"({convert2str node.Left.Value})*{convert2str node.Right.Value}"
+                    "(" + convert2str node.Left.Value + ")*" + convert2str node.Right.Value
                 elif
                     needBracketsComp node.Right.Value
                 then
-                    $"{convert2str node.Left.Value}*({convert2str node.Right.Value})"
+                    convert2str node.Left.Value + "*(" + convert2str node.Right.Value+ ")"
                 else
-                    $"{convert2str node.Left.Value}*{convert2str node.Right.Value}"
+                     convert2str node.Left.Value + "*" + convert2str node.Right.Value
             | '/' ->
                 if
                     needBracketsComp node.Left.Value
                     && needBracketsSum node.Right.Value
                 then
-                    $"({convert2str node.Left.Value})/({convert2str node.Right.Value})"
+                    "(" + convert2str node.Left.Value + ")/(" + convert2str node.Right.Value + ")"
                 elif
                     needBracketsComp node.Left.Value
                 then
-                    $"({convert2str node.Left.Value})/{convert2str node.Right.Value}"
+                    "(" + convert2str node.Left.Value + ")/" + convert2str node.Right.Value
                 elif 
                     needBracketsSum node.Right.Value
                 then
-                    $"{convert2str node.Left.Value}/({convert2str node.Right.Value})"
+                     convert2str node.Left.Value + "/(" + convert2str node.Right.Value + ")"
                 else
-                    $"{convert2str node.Left.Value}/{convert2str node.Right.Value}"
+                     convert2str node.Left.Value + "/" + convert2str node.Right.Value
             | '^' ->
                 if needBracketsSum node.Left.Value && needBracketsSum node.Right.Value then
-                    $"({convert2str node.Left.Value})^({convert2str node.Right.Value})"
+                    "(" + convert2str node.Left.Value + ")^(" + convert2str node.Right.Value + ")"
                 elif needBracketsSum node.Left.Value then
-                    $"({convert2str node.Left.Value})^{convert2str node.Right.Value}"
+                    "(" + convert2str node.Left.Value + ")^" + convert2str node.Right.Value
                 elif needBracketsSum node.Right.Value then
-                    $"{convert2str node.Left.Value}^({convert2str node.Right.Value})"
+                     convert2str node.Left.Value + "^(" + convert2str node.Right.Value + ")"
                 else
-                    $"{convert2str node.Left.Value}^{convert2str node.Right.Value}"
+                     convert2str node.Left.Value + "^" + convert2str node.Right.Value
             | val1 when 
                 Array.contains val1 allowedArgs 
                 || Array.contains val1 consts ->  
                     string val1
             | val1 when Array.contains val1 funcs ->
-                $"{Map.findKey (fun k v -> v = val1) funcsMap}({convert2str node.Right.Value})"
+                Map.findKey (fun _ v -> v = val1) funcsMap + "(" + convert2str node.Right.Value + ")"
             | _ -> raise (UnknownOperation (string node.Operation))
 
         convert2str this
@@ -361,7 +361,7 @@ let convertToFunc (line: string) : Node =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
-        //printfn "l: %d r: %d => %s" l r removed
+        printfn "l: %d r: %d => %s" l r removed
 
         match removed with
         | val1 when 

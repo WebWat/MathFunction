@@ -9,13 +9,13 @@ type NodeTest() = class
     let expr = "((-1)*sin(2*x)/cos(1/ln(x))+(x+2)*(x+3)*(x^3-1))*exp(sin(x))"
     let node = convertToFunc expr
 
-    [<Benchmark>]
-    member this.Convert() =
-        convertToFunc (expr)
+    //[<Benchmark>]
+    //member this.Convert() =
+    //    convertToFunc (expr)
 
-    [<Benchmark>]
-    member this.Calculate() =
-        calculateFunc (node) (Map [('x', 0.05)])
+    //[<Benchmark>]
+    //member this.Calculate() =
+    //    calculateFunc (node) (Map [('x', 0.05)])
 
     [<Benchmark>]
     member this.ToStr() =

@@ -21,13 +21,7 @@ let funcsMap =
           ("arcsin", '\u0019')
           ("arccos", '\u001A')
           ("arctg" , '\u001B')
-          ("arcctg", '\u001C')
-          ("sh"    , '\u001D')
-          ("ch"    , '\u001E')
-          ("th"    , '\u001F')
-          ("cth"   , '\u0020')
-          ("sch"   , '\u0021')
-          ("csch"  , '\u0022') ]
+          ("arcctg", '\u001C') ]
 
 let funcs = Map.toArray funcsMap |> Array.map snd
 
@@ -51,16 +45,17 @@ type Node =
       Left: Option<Node>
       Right: Option<Node> }
 
-    // Bad refactoring...
     override this.ToString() =
         let summary = 
             [||] 
             |> Array.append consts
             |> Array.append allowedArgs
             |> Array.append funcs
+        
+        let additional = [|'*'; '/'|] 
 
         let summaryComp = 
-            [|'*'; '/'|] 
+            additional
             |> Array.append summary
 
         let needBracketsSum (node: Node) =
@@ -95,45 +90,52 @@ type Node =
                 then
                     convert2str node.Left.Value + "-(" + convert2str node.Right.Value + ")"
                 else
-                   convert2str node.Left.Value + "-" + convert2str node.Right.Value
+                    convert2str node.Left.Value + "-" + convert2str node.Right.Value
             | '*' ->
+                let left = needBracketsComp node.Left.Value
+                let right = needBracketsComp node.Right.Value
+
                 if
-                    needBracketsComp node.Left.Value
-                    && needBracketsComp node.Right.Value
+                    left && right
                 then
-                    "(" + convert2str node.Left.Value+")*("+convert2str node.Right.Value + ")"
+                    "(" + convert2str node.Left.Value + ")*(" + convert2str node.Right.Value + ")"
                 elif
-                    needBracketsComp node.Left.Value
+                    left
                 then
                     "(" + convert2str node.Left.Value + ")*" + convert2str node.Right.Value
                 elif
-                    needBracketsComp node.Right.Value
+                    right
                 then
                     convert2str node.Left.Value + "*(" + convert2str node.Right.Value+ ")"
                 else
-                     convert2str node.Left.Value + "*" + convert2str node.Right.Value
+                    convert2str node.Left.Value + "*" + convert2str node.Right.Value
             | '/' ->
+                let left = needBracketsComp node.Left.Value
+                let right = needBracketsSum node.Right.Value
+
                 if
-                    needBracketsComp node.Left.Value
-                    && needBracketsSum node.Right.Value
+                    left && right
                 then
                     "(" + convert2str node.Left.Value + ")/(" + convert2str node.Right.Value + ")"
                 elif
-                    needBracketsComp node.Left.Value
+                    left
                 then
                     "(" + convert2str node.Left.Value + ")/" + convert2str node.Right.Value
                 elif 
-                    needBracketsSum node.Right.Value
+                    Array.contains node.Right.Value.Operation additional
                 then
                      convert2str node.Left.Value + "/(" + convert2str node.Right.Value + ")"
                 else
                      convert2str node.Left.Value + "/" + convert2str node.Right.Value
             | '^' ->
-                if needBracketsSum node.Left.Value && needBracketsSum node.Right.Value then
+                let left = needBracketsSum node.Left.Value
+                let right = needBracketsSum node.Right.Value
+
+                if left && right then
                     "(" + convert2str node.Left.Value + ")^(" + convert2str node.Right.Value + ")"
-                elif needBracketsSum node.Left.Value then
+                elif left then
                     "(" + convert2str node.Left.Value + ")^" + convert2str node.Right.Value
-                elif needBracketsSum node.Right.Value then
+                elif right then
                      convert2str node.Left.Value + "^(" + convert2str node.Right.Value + ")"
                 else
                      convert2str node.Left.Value + "^" + convert2str node.Right.Value
@@ -157,11 +159,29 @@ let isConst (node: Node) = Array.contains node.Operation consts
 
 let isArg (node: Node) = Array.contains node.Operation allowedArgs
 
-let nodeNumber (number: float) = 
-    { Value = 0
+let getNumber (number: float) : Node = 
+    { Value = number
       Operation = '\u0000'
       Left = None
       Right = None }
+
+let getParameter (arg: char) : Node = 
+    { Value = 0
+      Operation = arg
+      Left = None
+      Right = None }
+
+let getFunction (node: Node) (func: string) =
+    { Value = 0
+      Operation = (Map.find func funcsMap)
+      Left = None
+      Right = Some node }
+
+let combine (left: Node) (right: Node) (op: char) =
+    { Value = 0
+      Operation = op
+      Left = Some left
+      Right = Some right }
 
 let isNumber (number: string) =
     let mutable temp = 0.
@@ -361,7 +381,7 @@ let convertToFunc (line: string) : Node =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
-        printfn "l: %d r: %d => %s" l r removed
+        //printfn "l: %d r: %d => %s" l r removed
 
         match removed with
         | val1 when 
@@ -439,12 +459,6 @@ let rec calculateFunc (node: Node) (args: Map<char, float>) : float =
     | '\u001A'  -> Math.Acos(calculateFunc node.Right.Value args)
     | '\u001B' -> Math.Atan(calculateFunc node.Right.Value args)
     | '\u001C'  -> Math.PI / 2. - Math.Atan(calculateFunc node.Right.Value args)
-    | '\u001D' -> Math.Sinh(calculateFunc node.Right.Value args)
-    | '\u001E' -> Math.Cosh(calculateFunc node.Right.Value args)
-    | '\u001F' -> Math.Tanh(calculateFunc node.Right.Value args)
-    | '\u0020'  -> 1. / Math.Tanh(calculateFunc node.Right.Value args)
-    | '\u0021'  -> 1. / Math.Cosh(calculateFunc node.Right.Value args)
-    | '\u0022'   -> 1. / Math.Sinh(calculateFunc node.Right.Value args)
     | val1 when isArg node ->
         match args.TryFind val1 with
         | Some arg -> arg

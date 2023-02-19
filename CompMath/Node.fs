@@ -6,6 +6,7 @@ open System.Globalization
 exception UnknownOperation of string
 exception ArgumentNotExist of string
 exception InvalidBracket of string
+exception InvalidModule of string
 
 // 0000 - 009F
 let funcsMap =
@@ -183,8 +184,7 @@ let combine (left: Node) (right: Node) (op: char) =
       Left = Some left
       Right = Some right }
 
-let isNumber (number: string) =
-    let mutable temp = 0.
+let isNumber (number: string, temp: outref<float>) =
 
     // Parse with a dot
     Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
@@ -223,6 +223,8 @@ let rec private findModulesIndexes (line: string) (total: int) (current: int) (l
         current - int inc
     elif current = line.Length - 1 || current = 0 then
         current
+    elif current >= line.Length then
+        raise (InvalidModule line)
     elif line[current] = '|' then
         if
             not lastClose
@@ -281,25 +283,12 @@ let getBracketsIndexesLeft2Right (line: string) =
     | _ -> (-1, -1)
 
 // Gets the character index, after passing various checks.
+
+// Only for '^' operation.
 let getSymbolIndexRight2Left (leftBracket: int) (rightBracket: int) (symbol: char) (line: string) =
-    // Check that the symbol is not in other brackets
-    let rec checkRightSide (line: string) (rLast: int) (rCurrent: int) index =
-        let subLine = line[rLast + 2 ..]
-        let (left, right) = getBracketsIndexesRight2Left subLine
-
-        // What?
-        if left = -1 || right = -1 || (rLast < index && index < left + rLast + 2) then
-            if index = -1 then -1 else rCurrent + 1
-        else
-            checkRightSide subLine right (right + rCurrent + 2) (lookOutside subLine symbol left right 0 Operation.Inc)
-
     let index = lookOutside line symbol leftBracket rightBracket 0 Operation.Inc
 
-    // If found symbol beyond expression
-    if index <> -1 && rightBracket <> -1 && index > rightBracket + 1 then
-        checkRightSide line rightBracket rightBracket index
-    else
-        index
+    index
 
 let getSymbolIndexLeft2Right (leftBracket: int) (rightBracket: int) (symbol: char) (line: string) =
     // Check that the symbol is not in other brackets
@@ -307,7 +296,7 @@ let getSymbolIndexLeft2Right (leftBracket: int) (rightBracket: int) (symbol: cha
         let subLine = line[.. lLast - 2]
         let (left, right) = getBracketsIndexesLeft2Right subLine
 
-        // What?
+        // If there are no brackets or the symbol between the brackets
         if left = -1 || right = -1 || (right < index && index < lLast) then
             index
         else
@@ -377,6 +366,8 @@ let rec searchSymbol (operands: string * string) (line: string) (leftBracket: in
 
 // Converts a function represented in a string into a recursive Node entry.
 let convertToFunc (line: string) : Node =
+    let mutable temp = 0.
+
     let rec convert (line: string) =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
@@ -396,8 +387,8 @@ let convertToFunc (line: string) : Node =
               Operation = Map.find val1 constsMap
               Left = None
               Right = None }
-        | val1 when isNumber (val1) ->
-            { Value = Double.Parse (val1.AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture)
+        | val1 when isNumber (val1, &temp) ->
+            { Value = temp
               Operation = '\u0000'
               Right = None
               Left = None }

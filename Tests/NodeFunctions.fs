@@ -115,36 +115,6 @@ let ``Get symbol index (from left to right)`` () =
     Assert.Equal(7, (getSymbolIndexLeft2Right l6 r6 '-' line6))
 
 [<Fact>]
-let ``Get symbol index (from right to left)`` () =
-    // Default
-    let line1 = "x+2"
-    let (l1, r1) = getBracketsIndexesRight2Left line1
-    Assert.Equal(1, (getSymbolIndexRight2Left l1 r1 '+' line1))
-    Assert.Equal(-1, (getSymbolIndexRight2Left l1 r1  '-' line1))
-
-    let line2 = "-10.0^2"
-    let (l2, r2) = getBracketsIndexesRight2Left line2
-    Assert.Equal(0, (getSymbolIndexRight2Left l2 r2 '-' line2))
-
-    // With brackets
-    let line3 = "2.2+(x+2)"
-    let (l3, r3) = getBracketsIndexesRight2Left line3
-    Assert.Equal(3, (getSymbolIndexRight2Left l3 r3 '+' line3))
-
-    let line4 = "(x+2)+2"
-    let (l4, r4) = getBracketsIndexesRight2Left line4
-    Assert.Equal(5, (getSymbolIndexRight2Left l4 r4 '+' line4))
-
-    // Complex
-    let line5 = "(2.2-x)*(x-2)+(x-3)"
-    let (l5, r5) = getBracketsIndexesRight2Left line5
-    Assert.Equal(-1, (getSymbolIndexRight2Left l5 r5 '-' line5))
-
-    let line6 = "(2.2-x)*(x-2)-(x-3)"
-    let (l6, r6) = getBracketsIndexesRight2Left line6
-    Assert.Equal(13, (getSymbolIndexRight2Left l6 r6 '-' line6))
-
-[<Fact>]
 let ``Remove extra brackets`` () =
     // Default
     Assert.Equal("x+2", fst (removeExtraBrackets "x+2"))

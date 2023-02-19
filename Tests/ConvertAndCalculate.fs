@@ -118,5 +118,7 @@ let ``Exceptions`` () =
         calculateFunc (convertToFunc "x^2+2*x+2") (Map []); ()))
     Assert.Throws<InvalidBracket>(new Action(fun _ -> 
         convertToFunc "(2+3))"; ()))
+    Assert.Throws<InvalidModule>(new Action(fun _ -> 
+        convertToFunc "|2+3||"; ()))
 
 

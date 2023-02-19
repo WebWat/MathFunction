@@ -27,11 +27,14 @@ while true do
 
         try
             let func = FunctionX text
+            let der = func.Deravative()
 
             printfn "Function string: %s" (func.ToString())
+            printfn "Deravative string: %s" (der.ToString())
 
-            for i in -1.0..0.5..1.0 do
-                printfn "y(%f) = %f | " i (func.Calc i)
+            for i in -5.0..0.5..5.0 do
+                printf "y(%f) = %f | " i (func.Calc i)
+                printfn "y'(%f) = %f | " i (der.Calc i)
         with
         | ex -> printfn "Incorrect input: %s" ex.Message
 

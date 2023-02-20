@@ -112,7 +112,7 @@ type Node =
                     convert2str node.Left.Value + "*" + convert2str node.Right.Value
             | '/' ->
                 let left = needBracketsComp node.Left.Value
-                let right = needBracketsSum node.Right.Value
+                let right = needBracketsComp node.Right.Value
 
                 if
                     left && right
@@ -123,7 +123,7 @@ type Node =
                 then
                     "(" + convert2str node.Left.Value + ")/" + convert2str node.Right.Value
                 elif 
-                    Array.contains node.Right.Value.Operation additional
+                    right || Array.contains node.Right.Value.Operation additional
                 then
                      convert2str node.Left.Value + "/(" + convert2str node.Right.Value + ")"
                 else
@@ -247,7 +247,7 @@ let rec private lookOutside
     (inc: Operation)
     : int =
 
-    if leftBracket = -1 && rightBracket = -1 then
+    if leftBracket = -1 then
         if inc = Operation.Dec then
             line.LastIndexOf(symbol)
         else
@@ -300,7 +300,8 @@ let getSymbolIndexLeft2Right (leftBracket: int) (rightBracket: int) (symbol: cha
         if left = -1 || right = -1 || (right < index && index < lLast) then
             index
         else
-            checkLeftSide subLine left (lookOutside subLine symbol left right (subLine.Length - 1) Operation.Dec)
+            checkLeftSide subLine left 
+                <| lookOutside subLine symbol left right (subLine.Length - 1) Operation.Dec
 
     let index =
         lookOutside line symbol leftBracket rightBracket (line.Length - 1) Operation.Dec
@@ -426,32 +427,35 @@ let convertToFunc (line: string) : Node =
 
     convert (line.Replace(" ", ""))
 
-let rec calculateFunc (node: Node) (args: Map<char, float>) : float =
-    match node.Operation with
-    | '\u0000' -> node.Value    
-    | '\u0001' -> Math.PI
-    | '\u0002' -> Math.E
-    | '+' -> calculateFunc node.Left.Value args + calculateFunc node.Right.Value args
-    | '-' -> calculateFunc node.Left.Value args - calculateFunc node.Right.Value args
-    | '*' -> calculateFunc node.Left.Value args * calculateFunc node.Right.Value args
-    | '/' -> calculateFunc node.Left.Value args / calculateFunc node.Right.Value args
-    | '^' -> Math.Pow(calculateFunc node.Left.Value args, calculateFunc node.Right.Value args)
-    | '|' -> Math.Abs(calculateFunc node.Right.Value args)
-    | '\u0010' -> Math.Log(calculateFunc node.Right.Value args)
-    | '\u0011' -> Math.Log10(calculateFunc node.Right.Value args)
-    | '\u0012'   -> Math.Sin(calculateFunc node.Right.Value args)
-    | '\u0013' -> Math.Cos(calculateFunc node.Right.Value args)
-    | '\u0014'  -> Math.Sqrt(calculateFunc node.Right.Value args)
-    | '\u0015'  -> Math.Log2(calculateFunc node.Right.Value args)
-    | '\u0016' -> Math.Tan(calculateFunc node.Right.Value args)
-    | '\u0017'  -> 1. / Math.Tan(calculateFunc node.Right.Value args)
-    | '\u0018'  -> Math.Exp(calculateFunc node.Right.Value args)
-    | '\u0019'  -> Math.Asin(calculateFunc node.Right.Value args)
-    | '\u001A'  -> Math.Acos(calculateFunc node.Right.Value args)
-    | '\u001B' -> Math.Atan(calculateFunc node.Right.Value args)
-    | '\u001C'  -> Math.PI / 2. - Math.Atan(calculateFunc node.Right.Value args)
-    | val1 when isArg node ->
-        match args.TryFind val1 with
-        | Some arg -> arg
-        | _ -> raise (ArgumentNotExist (string val1))
-    | _ -> raise (UnknownOperation (string node.Operation))
+let calculateFunc (node: Node) (args: Map<char, float>): float =
+    let rec op (node: Node) : float =
+        match node.Operation with
+        | '\u0000' -> node.Value    
+        | '\u0001' -> Math.PI
+        | '\u0002' -> Math.E
+        | '+' -> op node.Left.Value + op node.Right.Value
+        | '-' -> op node.Left.Value - op node.Right.Value
+        | '*' -> op node.Left.Value * op node.Right.Value
+        | '/' -> op node.Left.Value / op node.Right.Value
+        | '^' -> Math.Pow(op node.Left.Value, op node.Right.Value)
+        | '|' -> Math.Abs(op node.Right.Value)
+        | '\u0010' -> Math.Log(op node.Right.Value)
+        | '\u0011' -> Math.Log10(op node.Right.Value)
+        | '\u0012' -> Math.Sin(op node.Right.Value)
+        | '\u0013' -> Math.Cos(op node.Right.Value)
+        | '\u0014' -> Math.Sqrt(op node.Right.Value)
+        | '\u0015' -> Math.Log2(op node.Right.Value)
+        | '\u0016' -> Math.Tan(op node.Right.Value)
+        | '\u0017' -> 1. / Math.Tan(op node.Right.Value)
+        | '\u0018' -> Math.Exp(op node.Right.Value)
+        | '\u0019' -> Math.Asin(op node.Right.Value)
+        | '\u001A' -> Math.Acos(op node.Right.Value)
+        | '\u001B' -> Math.Atan(op node.Right.Value)
+        | '\u001C' -> Math.PI / 2. - Math.Atan(op node.Right.Value)
+        | val1 when isArg node ->
+            match args.TryFind val1 with
+            | Some arg -> arg
+            | _ -> raise (ArgumentNotExist (string val1))
+        | _ -> raise (UnknownOperation (string node.Operation))
+
+    op node

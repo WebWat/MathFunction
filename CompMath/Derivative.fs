@@ -152,7 +152,14 @@ let derivativeFunc (node: Node) (d: char) : Node =
                             node.Right.Value
                             (getFunction node.Left.Value "ln")
                             '*')
-                        "exp")        
+                        "exp") 
+        //| '|' -> 
+        //    // |x|
+        //    if node.Right.Value.Operation = d then
+        //        getFunction node.Right.Value "sgn"
+        //    // |f(x)|
+        //    else
+        //        combin
         | '\u0010' -> 
             // ln(x)
             if node.Right.Value.Operation = d then
@@ -397,6 +404,7 @@ let derivativeFunc (node: Node) (d: char) : Node =
                             '+')
                         '/')
                     '-'
+        | '\u001D' -> getNumber 0
         | _ -> raise (UnknownOperation (string node.Operation))
 
     op node

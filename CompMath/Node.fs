@@ -22,8 +22,8 @@ let funcsMap =
           ("arcsin", '\u0019')
           ("arccos", '\u001A')
           ("arctg" , '\u001B')
-          ("arcctg", '\u001C') ]
-
+          ("arcctg", '\u001C')
+          ("sgn"   , '\u001D')]
 let funcs = Map.toArray funcsMap |> Array.map snd
 
 let allowedArgs = [| 'a'; 'b'; 'c'; 'd'; 'f'; 'g'; 'h'; 'i'; 'g'; 'k'; 'l'; 'm'; 'n'; 'o'; 'p'; 'q'; 'r'; 's'; 't'; 'u'; 'v'; 'w'; 'x'; 'y'; 'z' |]
@@ -32,43 +32,132 @@ let constsMap =
     Map [ (""  , '\u0000')
           ("pi", '\u0001')
           ("e" , '\u0002')]
-
 let consts =  Map.toArray constsMap |> Array.map snd
-
 
 let operations = [| '+'; '-'; '*'; '/'; '^' |]
 
 let symbols = Array.append operations [|'('; '|'|]
+
+
+let summary = 
+        [||] 
+        |> Array.append consts
+        |> Array.append allowedArgs
+        |> Array.append funcs
+        
+let additional = [|'*'; '/'|] 
+
+let summaryComp = 
+    additional
+    |> Array.append summary
+
+let needBracketsSum (operation: char) =
+    operation <> '|'
+    && operation <> '^'
+    && not (Array.contains operation summary)
+
+let needBracketsComp (operation: char) =
+    operation <> '|'
+    && operation<> '^'
+    && not (Array.contains operation summaryComp)
+
 
 type Node =
     { Value: float
       Operation: char
       Left: Option<Node>
       Right: Option<Node> }
+    
+    member this.ToMathJax() =
+        let rec convert2math node =
+            match node.Operation with
+            | '\u0000' -> string node.Value
+            | '\u0001' -> "\\pi "
+            | '\u0002' -> "e"
+            | '+' -> convert2math node.Left.Value + "+" + convert2math node.Right.Value
+            | '-' ->
+                if node.Left.Value.Operation = '\u0000' && node.Left.Value.Value = 0 then
+                    if
+                        needBracketsComp node.Right.Value.Operation
+                    then
+                        "-\\left(" + convert2math node.Right.Value + "\\right)"
+                    else
+                        "-" + convert2math node.Right.Value
+                else if
+                    needBracketsComp node.Right.Value.Operation
+                then
+                    convert2math node.Left.Value + "-\\left(" + convert2math node.Right.Value + "\\right)"
+                else
+                    convert2math node.Left.Value + "-" + convert2math node.Right.Value
+            | '|' -> "\\left|" + convert2math node.Right.Value + "\\right|"
+            | '*' ->
+                let left = needBracketsComp node.Left.Value.Operation
+                let right = needBracketsComp node.Right.Value.Operation
+
+                if
+                    left && right
+                then
+                    "\\left(" + convert2math node.Left.Value + "\\right)\\cdot\\left(" + convert2math node.Right.Value + "\\right)"
+                elif
+                    left
+                then
+                    "\\left(" + convert2math node.Left.Value + "\\right)\\cdot" + convert2math node.Right.Value
+                elif
+                    right
+                then
+                    convert2math node.Left.Value + "\\cdot\\left(" + convert2math node.Right.Value+ "\\right)"
+                else
+                    convert2math node.Left.Value + convert2math node.Right.Value
+            | '/' ->
+                let left = needBracketsComp node.Left.Value.Operation
+                let right = needBracketsComp node.Right.Value.Operation
+
+                if
+                    left && right
+                then
+                    "\\frac{\\left(" + convert2math node.Left.Value + "\\right)}{\\left(" + convert2math node.Right.Value + "\\right)}"
+                elif
+                    left
+                then
+                    "\\frac{\\left(" + convert2math node.Left.Value + "\\right)}{" + convert2math node.Right.Value + "}"
+                elif 
+                    right || Array.contains node.Right.Value.Operation additional
+                then
+                    "\\frac{" + convert2math node.Left.Value + "}{\\left(" + convert2math node.Right.Value + "\\right)}"
+                else
+                    "\\frac{" + convert2math node.Left.Value + "}{" + convert2math node.Right.Value + "}"
+            | '^' ->
+                let left = needBracketsSum node.Left.Value.Operation
+                let right = needBracketsSum node.Right.Value.Operation
+
+                if left && right then
+                    "\\left(" + convert2math node.Left.Value + ")^{\\left(" + convert2math node.Right.Value + "\\right)}"
+                elif left then
+                    "\\left(" + convert2math node.Left.Value + "\\right)^{" + convert2math node.Right.Value + "}"
+                elif right then
+                     convert2math node.Left.Value + "^{\\left(" + convert2math node.Right.Value + "\\right)}"
+                else
+                     convert2math node.Left.Value + "^{" + convert2math node.Right.Value + "}"
+            | val1 when 
+                Array.contains val1 allowedArgs ->  
+                    string val1
+            | '\u0010' -> "\\ln\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0011' -> "\\log_{10}\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0012' -> "\\sin\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0013' -> "\\cos\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0014' -> "\\sqrt\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0015' -> "\\log_{2}\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0016' -> "\\tan\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0017' -> "\\cot\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0018' -> "\\exp\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u0019' -> "\\arcsin\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u001A' -> "\\arccos\\left(" + convert2math node.Right.Value + "\\right)"
+            | '\u001B' -> "\\arctan\\left(" + convert2math node.Right.Value + "\\right)"
+            | _ -> raise (UnknownOperation (string node.Operation))
+
+        convert2math this
 
     override this.ToString() =
-        let summary = 
-            [||] 
-            |> Array.append consts
-            |> Array.append allowedArgs
-            |> Array.append funcs
-        
-        let additional = [|'*'; '/'|] 
-
-        let summaryComp = 
-            additional
-            |> Array.append summary
-
-        let needBracketsSum (node: Node) =
-            node.Operation <> '|'
-            && node.Operation <> '^'
-            && not (Array.contains node.Operation summary)
-
-        let needBracketsComp (node: Node) =
-            node.Operation <> '|'
-            && node.Operation <> '^'
-            && not (Array.contains node.Operation summaryComp)
-
         let rec convert2str node =
             match node.Operation with
             | '\u0000'  ->
@@ -76,25 +165,27 @@ type Node =
                     "(" + (string node.Value) + ")"
                 else
                     string node.Value
+            | '\u0001' -> "pi"
+            | '\u0002' -> "e"
             | '+' -> convert2str node.Left.Value + "+" + convert2str node.Right.Value
             | '|' -> "|" + convert2str node.Right.Value + "|"
             | '-' ->
                 if node.Left.Value.Operation = '\u0000' && node.Left.Value.Value = 0 then
                     if
-                        needBracketsComp node.Right.Value
+                        needBracketsComp node.Right.Value.Operation
                     then
                         "-(" + convert2str node.Right.Value + ")"
                     else
                         "-" + convert2str node.Right.Value
                 else if
-                    needBracketsComp node.Right.Value
+                    needBracketsComp node.Right.Value.Operation
                 then
                     convert2str node.Left.Value + "-(" + convert2str node.Right.Value + ")"
                 else
                     convert2str node.Left.Value + "-" + convert2str node.Right.Value
             | '*' ->
-                let left = needBracketsComp node.Left.Value
-                let right = needBracketsComp node.Right.Value
+                let left = needBracketsComp node.Left.Value.Operation
+                let right = needBracketsComp node.Right.Value.Operation
 
                 if
                     left && right
@@ -111,8 +202,8 @@ type Node =
                 else
                     convert2str node.Left.Value + "*" + convert2str node.Right.Value
             | '/' ->
-                let left = needBracketsComp node.Left.Value
-                let right = needBracketsComp node.Right.Value
+                let left = needBracketsComp node.Left.Value.Operation
+                let right = needBracketsComp node.Right.Value.Operation
 
                 if
                     left && right
@@ -129,8 +220,8 @@ type Node =
                 else
                      convert2str node.Left.Value + "/" + convert2str node.Right.Value
             | '^' ->
-                let left = needBracketsSum node.Left.Value
-                let right = needBracketsSum node.Right.Value
+                let left = needBracketsSum node.Left.Value.Operation
+                let right = needBracketsSum node.Right.Value.Operation
 
                 if left && right then
                     "(" + convert2str node.Left.Value + ")^(" + convert2str node.Right.Value + ")"
@@ -141,8 +232,7 @@ type Node =
                 else
                      convert2str node.Left.Value + "^" + convert2str node.Right.Value
             | val1 when 
-                Array.contains val1 allowedArgs 
-                || Array.contains val1 consts ->  
+                Array.contains val1 allowedArgs ->  
                     string val1
             | val1 when Array.contains val1 funcs ->
                 Map.findKey (fun _ v -> v = val1) funcsMap + "(" + convert2str node.Right.Value + ")"
@@ -452,6 +542,11 @@ let calculateFunc (node: Node) (args: Map<char, float>): float =
         | '\u001A' -> Math.Acos(op node.Right.Value)
         | '\u001B' -> Math.Atan(op node.Right.Value)
         | '\u001C' -> Math.PI / 2. - Math.Atan(op node.Right.Value)
+        | '\u001D' -> 
+            match (op node.Right.Value) with
+            | 0. -> 0.
+            | val1 when val1 < 0 -> -1.
+            | _ -> 1
         | val1 when isArg node ->
             match args.TryFind val1 with
             | Some arg -> arg

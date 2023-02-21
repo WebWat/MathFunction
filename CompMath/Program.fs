@@ -26,12 +26,14 @@ while true do
         l.Start()
 
         let func = FunctionX text
-        let der = func.Deravative()
+        let der = func.Derivative()
 
         printfn "Function string: %s" (func.ToString())
+        //printfn "MathJax string: %s" (func.ToMathJax())
         printfn "Deravative string: %s" (der.ToString())
+        //printfn "MathJax string: %s" (der.ToMathJax())
 
-        for i in -5.0..0.5..5.0 do
+        for i in 0.0..0.1..1.0 do
             printf "y(%f) = %f | " i (func.Calc i)
             printfn "y'(%f) = %f | " i (der.Calc i)
 

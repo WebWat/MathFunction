@@ -4,10 +4,10 @@ open Node
 open Derivative
 
 type public FunctionX(node: Node) =
+    inherit SingleArgFunction(node)
+
     new (line: string) = FunctionX(convertToFunc line)
         
-    member _.Calc(x: float) = calculateFunc node (Map [('x', x)])
+    override _.Calc(x: float) = calculateFunc node (Map [('x', x)])
 
-    member _.Deravative() = FunctionX (derivativeFunc node 'x')
-
-    override _.ToString() = node.ToString()
+    override _.Derivative() = FunctionX (derivativeFunc node 'x')

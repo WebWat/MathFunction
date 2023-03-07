@@ -3,23 +3,33 @@
 open BenchmarkDotNet.Attributes
 open Node
 open Expand
+open Derivative
 
 [<MemoryDiagnoser>]
 type NodeTest() = class
     let expr = "((-1)*sin(2*x)/cos(1/ln(x))+(x+2)*(x+3)*(x^3-1))*exp(sin(x))"
     let node = convertToFunc expr
 
-    [<Benchmark>]
-    member this.Convert() =
-        convertToFunc (expr)
+    //[<Benchmark>]
+    //member this.Convert() =
+    //    convertToFunc (expr)
+    let isDivOrMul1 (node: Node) =
+        node.Operation = '*' || node.Operation = '/'
+
+    let isDivOrMul2 (node: char) =
+        node = '*' || node = '/'
 
     [<Benchmark>]
-    member this.Calculate() =
-        calculateFunc (node) (Map [('x', 0.05)])
+    member this.Node() =
+        isDivOrMul1 node
 
     [<Benchmark>]
-    member this.ToStr() =
-        node.ToString()
+    member this.Char() =
+        isDivOrMul2 node.Operation
+
+    //[<Benchmark>]
+    //member this.Derativate() =
+    //    derivativeFunc node 'x'
 
     //[<Benchmark>]
     //member this.New() =

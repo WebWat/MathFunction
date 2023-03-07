@@ -112,6 +112,16 @@ let ``Arcctg`` () =
     Assert.Equal("-2/(1+(2*x)^2)", derivative "arcctg(2*x)")
 
 [<Fact>]
+let ``Sgn`` () =
+    Assert.Equal("0", derivative "sgn(x)")
+
+[<Fact>]
+let ``Module`` () =
+    Assert.Equal("sgn(x)", derivative "|x|")
+    Assert.Equal("(-1)*sgn(-x)", derivative "|-x|")
+    Assert.Equal("2*3*x^2*sgn(2*x^3)", derivative "|2*x^3|")
+
+[<Fact>]
 let ``Complex`` () =
     Assert.Equal(
         "((-1)*(cos(2*x)*2*cos(1/ln(x))-sin(2*x)*(-sin(1/ln(x)))" +

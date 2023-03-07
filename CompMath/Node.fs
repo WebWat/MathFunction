@@ -38,30 +38,6 @@ let operations = [| '+'; '-'; '*'; '/'; '^' |]
 
 let symbols = Array.append operations [|'('; '|'|]
 
-
-let summary = 
-        [||] 
-        |> Array.append consts
-        |> Array.append allowedArgs
-        |> Array.append funcs
-        
-let additional = [|'*'; '/'|] 
-
-let summaryComp = 
-    additional
-    |> Array.append summary
-
-let needBracketsSum (operation: char) =
-    operation <> '|'
-    && operation <> '^'
-    && not (Array.contains operation summary)
-
-let needBracketsComp (operation: char) =
-    operation <> '|'
-    && operation<> '^'
-    && not (Array.contains operation summaryComp)
-
-
 type Node =
     { Value: float
       Operation: char
@@ -69,6 +45,27 @@ type Node =
       Right: Option<Node> }
     
     member this.ToMathJax() =
+        let summary = 
+            [||] 
+            |> Array.append consts
+            |> Array.append allowedArgs
+            |> Array.append funcs
+        
+        let additional = [|'*'; '/'|] 
+
+        let summaryComp = 
+            additional
+            |> Array.append summary
+
+        let needBracketsSum (operation: char) =
+            operation <> '|'
+            && operation <> '^'
+            && not (Array.contains operation summary)
+
+        let needBracketsComp (operation: char) =
+            operation <> '|'
+            && operation<> '^'
+            && not (Array.contains operation summaryComp)
         let rec convert2math node =
             match node.Operation with
             | '\u0000' -> string node.Value
@@ -158,6 +155,28 @@ type Node =
         convert2math this
 
     override this.ToString() =
+        let summary = 
+            [||] 
+            |> Array.append consts
+            |> Array.append allowedArgs
+            |> Array.append funcs
+        
+        let additional = [|'*'; '/'|] 
+
+        let summaryComp = 
+            additional
+            |> Array.append summary
+
+        let needBracketsSum (operation: char) =
+            operation <> '|'
+            && operation <> '^'
+            && not (Array.contains operation summary)
+
+        let needBracketsComp (operation: char) =
+            operation <> '|'
+            && operation<> '^'
+            && not (Array.contains operation summaryComp)
+
         let rec convert2str node =
             match node.Operation with
             | '\u0000'  ->
@@ -262,19 +281,19 @@ let getParameter (arg: char) : Node =
       Left = None
       Right = None }
 
-let getFunction (node: Node) (func: string) =
+let getFunction (func: string) (node: Node) =
     { Value = 0
       Operation = (Map.find func funcsMap)
       Left = None
       Right = Some node }
 
-let combine (left: Node) (right: Node) (op: char) =
+let combine (op: char) (left: Node) (right: Node) =
     { Value = 0
       Operation = op
       Left = Some left
       Right = Some right }
 
-let isNumber (number: string, temp: outref<float>) =
+let isNumber (number: string) (temp: outref<float>) =
 
     // Parse with a dot
     Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
@@ -478,7 +497,7 @@ let convertToFunc (line: string) : Node =
               Operation = Map.find val1 constsMap
               Left = None
               Right = None }
-        | val1 when isNumber (val1, &temp) ->
+        | val1 when isNumber val1 &temp ->
             { Value = temp
               Operation = '\u0000'
               Right = None

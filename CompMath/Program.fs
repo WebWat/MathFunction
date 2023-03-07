@@ -2,41 +2,49 @@
 open System.Diagnostics
 open Node
 open Derivative
+open Simplify
 open CompMath
 
 while true do
     printf "\nInput function: "
     let text = Console.ReadLine()
 
-    if text = "clear" then
-        let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
-        printfn "Before: %.1f KB" start
+    let func = convertToFunc text
 
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
+    let result = simplifyMultiply func
 
-        let _end = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
-        printfn "After: %.1f KB" _end
+    printfn "%s" (result.ToString())
+    ()
 
-        printfn "Free: %.1f KB" (start - _end)
+    //if text = "clear" then
+    //    let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
+    //    printfn "Before: %.1f KB" start
 
-    else
-        let l = new Stopwatch()
+    //    GC.Collect();
+    //    GC.WaitForPendingFinalizers();
 
-        l.Start()
+    //    let _end = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
+    //    printfn "After: %.1f KB" _end
 
-        let func = FunctionX text
-        let der = func.Derivative()
+    //    printfn "Free: %.1f KB" (start - _end)
 
-        printfn "Function string: %s" (func.ToString())
-        //printfn "MathJax string: %s" (func.ToMathJax())
-        printfn "Deravative string: %s" (der.ToString())
-        //printfn "MathJax string: %s" (der.ToMathJax())
+    //else
+    //    let l = new Stopwatch()
 
-        for i in 0.0..0.1..1.0 do
-            printf "y(%f) = %f | " i (func.Calc i)
-            printfn "y'(%f) = %f | " i (der.Calc i)
+    //    l.Start()
 
-        l.Stop()
+    //    let func = FunctionX text
+    //    let der = func.Derivative()
 
-        printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)
+    //    printfn "Function string: %s" (func.ToString())
+    //    //printfn "MathJax string: %s" (func.ToMathJax())
+    //    printfn "Deravative string: %s" (der.ToString())
+    //    //printfn "MathJax string: %s" (der.ToMathJax())
+
+    //    for i in -1.0..0.2..1.0 do
+    //        printf "y(%f) = %f | " i (func.Calc i)
+    //        printfn "y'(%f) = %f | " i (der.Calc i)
+
+    //    l.Stop()
+
+    //    printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)

@@ -2,49 +2,48 @@
 open System.Diagnostics
 open Node
 open Derivative
-open Simplify
+open Limits
 open CompMath
 
+
 while true do
+    // ln(cos(x)*sin(x))
     printf "\nInput function: "
     let text = Console.ReadLine()
 
-    let func = convertToFunc text
+    if text = "clear" then
+        let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
+        printfn "Before: %.1f KB" start
 
-    let result = simplifyMultiply func
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
 
-    printfn "%s" (result.ToString())
-    ()
+        let _end = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
+        printfn "After: %.1f KB" _end
 
-    //if text = "clear" then
-    //    let start = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
-    //    printfn "Before: %.1f KB" start
+        printfn "Free: %.1f KB" (start - _end)
 
-    //    GC.Collect();
-    //    GC.WaitForPendingFinalizers();
+    else
+        let l = new Stopwatch()
 
-    //    let _end = (float (GC.GetTotalMemory(false)) / (1024. * 1024.))
-    //    printfn "After: %.1f KB" _end
+        l.Start()
 
-    //    printfn "Free: %.1f KB" (start - _end)
+        let func = FunctionX text
+        let der = func.Derivative()
 
-    //else
-    //    let l = new Stopwatch()
+        printfn "Function string: %s" (func.ToString())
+        //printfn "MathJax string: %s" (func.ToMathJax())
+        printfn "Derivative string: %s" (der.ToString())
+        //printfn "MathJax string: %s" (der.ToMathJax())
 
-    //    l.Start()
+        for i in -1.0..0.2..1.0 do
+            printf "y(%f) = %f | " i (func.Calc i)
+            printf "y'beta(%f) = %f | " i (der.Calc i)
+            try
+                printfn "y'(%f) = %f | " i (derivative func i)
+            with
+            | _ -> printfn "Not exist"
 
-    //    let func = FunctionX text
-    //    let der = func.Derivative()
+        l.Stop()
 
-    //    printfn "Function string: %s" (func.ToString())
-    //    //printfn "MathJax string: %s" (func.ToMathJax())
-    //    printfn "Deravative string: %s" (der.ToString())
-    //    //printfn "MathJax string: %s" (der.ToMathJax())
-
-    //    for i in -1.0..0.2..1.0 do
-    //        printf "y(%f) = %f | " i (func.Calc i)
-    //        printfn "y'(%f) = %f | " i (der.Calc i)
-
-    //    l.Stop()
-
-    //    printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)
+        printfn "Time: %.3f s" (float l.ElapsedMilliseconds * 1e-3)

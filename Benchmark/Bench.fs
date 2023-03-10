@@ -2,7 +2,6 @@
 
 open BenchmarkDotNet.Attributes
 open Node
-open Expand
 open Derivative
 
 [<MemoryDiagnoser>]

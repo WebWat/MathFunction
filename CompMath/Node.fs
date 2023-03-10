@@ -174,7 +174,7 @@ type Node =
 
         let needBracketsComp (operation: char) =
             operation <> '|'
-            && operation<> '^'
+            && operation <> '^'
             && not (Array.contains operation summaryComp)
 
         let rec convert2str node =
@@ -204,7 +204,7 @@ type Node =
                     convert2str node.Left.Value + "-" + convert2str node.Right.Value
             | '*' ->
                 let left = needBracketsComp node.Left.Value.Operation
-                let right = needBracketsComp node.Right.Value.Operation
+                let right = needBracketsComp node.Right.Value.Operation 
 
                 if
                     left && right
@@ -222,7 +222,9 @@ type Node =
                     convert2str node.Left.Value + "*" + convert2str node.Right.Value
             | '/' ->
                 let left = needBracketsComp node.Left.Value.Operation
-                let right = needBracketsComp node.Right.Value.Operation
+                let right = needBracketsComp node.Right.Value.Operation 
+                            || node.Right.Value.Operation = '*'
+                            || node.Right.Value.Operation = '/'
 
                 if
                     left && right
@@ -233,7 +235,7 @@ type Node =
                 then
                     "(" + convert2str node.Left.Value + ")/" + convert2str node.Right.Value
                 elif 
-                    right || Array.contains node.Right.Value.Operation additional
+                    right
                 then
                      convert2str node.Left.Value + "/(" + convert2str node.Right.Value + ")"
                 else

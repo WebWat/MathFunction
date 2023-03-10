@@ -9,9 +9,8 @@
     <Compile Include="Node.fs" />
     <Compile Include="Function.fs" />
     <Compile Include="Derivative.fs" />
-    <Compile Include="Expand.fs" />
     <Compile Include="FunctionX.fs" />
-    <Compile Include="Simplify.fs" />
+    <Compile Include="Limits.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Limits.fs" />
     <Compile Include="DerivativeTests.fs" />
     <Compile Include="ConvertAndCalculate.fs" />
     <Compile Include="NodeFunctions.fs" />

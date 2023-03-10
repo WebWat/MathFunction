@@ -36,7 +36,7 @@ while true do
         printfn "Derivative string: %s" (der.ToString())
         //printfn "MathJax string: %s" (der.ToMathJax())
 
-        for i in -1.0..0.2..1.0 do
+        for i in 1.0..0.2..10.0 do
             printf "y(%f) = %f | " i (func.Calc i)
             printf "y'beta(%f) = %f | " i (der.Calc i)
             try

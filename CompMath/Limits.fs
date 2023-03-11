@@ -9,21 +9,21 @@ type Position =
     | Left
     | Right
 
-let limit (func: float -> float) (x: float) (accuracy: int) (position: Position) =   
-    if x = infinity || x = -infinity then raise (NotImplementedException())
+let limit (func: float -> float) (x: float) (accuracy: int) (position: Position) : float =   
     if accuracy < 0 then raise (ArgumentException("Accuracy cannot be less than 0 digits?"))
 
     let result = func x
 
     if result = infinity || Double.IsNaN result then
         let needed = pown 10. -accuracy
+        let started = 0.1
 
         let rec calculate eps ldiff mayBeInf =
             // Take two points on the interval
             let (first, second) = 
-                 match position with
-                 | Position.Left -> (func (x - eps * 2.), func (x - eps))
-                 | Position.Right -> (func (x + eps * 2.), func (x + eps))
+                    match position with
+                    | Position.Left -> (func (x - eps * 2.), func (x - eps))
+                    | Position.Right -> (func (x + eps * 2.), func (x + eps))
             
             let diff = abs(second - first)
 
@@ -43,11 +43,15 @@ let limit (func: float -> float) (x: float) (accuracy: int) (position: Position)
                     second
             else calculate (eps * 0.1) diff false
 
-        let startDiff = abs(func (x - 0.2) - func (x - 0.1))
+        let startDiff = 
+            match position with
+            | Position.Left -> (func (x - started * 2.) - func (x - started))
+            | Position.Right -> (func (x + started * 2.) - func (x + started))
+            |> abs
 
         if Double.IsNaN startDiff then raise (NotExist)
 
-        calculate 0.01 startDiff true
+        calculate (started * 0.1) startDiff true
     else
         result
 

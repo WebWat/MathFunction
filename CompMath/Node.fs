@@ -300,8 +300,8 @@ let isNumber (number: string) (temp: outref<float>) =
     // Parse with a dot
     Double.TryParse(number.ToString().AsSpan(), NumberStyles.Any, CultureInfo.InvariantCulture, &temp)
 
-// Get the index of the rightmost bracket or module.
-let private getClosest rightBracket leftModule =
+// Get the index of the outer bracket or module.
+let private getClosest (rightBracket: int) (leftModule: int) =
     if
         rightBracket <> -1
         && (leftModule = -1 || rightBracket > leftModule)
@@ -316,22 +316,22 @@ let private getClosest rightBracket leftModule =
         (-1, '-')
 
 // Returns the first outer brackets indexes.
-let rec private findBracketsIndexes (line: string) (total: int) (current: int) (inc: Operation) =
+let rec private findBracketsIndexes (line: string) (total: int) (current: int) (op: Operation) =
     if total = 0 then
-        current - int inc
+        current - int op
     elif current = -1 then
         raise (InvalidBracket line)
     elif line[current] = '(' then
-        findBracketsIndexes line (total - 1) (current + int inc) inc
+        findBracketsIndexes line (total - 1) (current + int op) op
     elif line[current] = ')' then
-        findBracketsIndexes line (total + 1) (current + int inc) inc
+        findBracketsIndexes line (total + 1) (current + int op) op
     else
-        findBracketsIndexes line total (current + int inc) inc
+        findBracketsIndexes line total (current + int op) op
 
 // Returns the first outer modules indexes.
-let rec private findModulesIndexes (line: string) (total: int) (current: int) (lastClose: bool) (inc: Operation) =
+let rec private findModulesIndexes (line: string) (total: int) (current: int) (lastClose: bool) (op: Operation) =
     if total = 0 then
-        current - int inc
+        current - int op
     elif current = line.Length - 1 || current = 0 then
         current
     elif current >= line.Length then
@@ -342,11 +342,11 @@ let rec private findModulesIndexes (line: string) (total: int) (current: int) (l
             && line[current - 1] <> ')'
             && Array.contains line[current - 1] symbols
         then
-            findModulesIndexes line (total + 1) (current + int inc) false inc
+            findModulesIndexes line (total + 1) (current + int op) false op
         else
-            findModulesIndexes line (total - 1) (current + int inc) true inc
+            findModulesIndexes line (total - 1) (current + int op) true op
     else
-        findModulesIndexes line total (current + int inc) false inc
+        findModulesIndexes line total (current + int op) false op
 
 // Looking for a symbol outside the brackets.
 let rec private lookOutside
@@ -430,7 +430,7 @@ let rec removeExtraBrackets (line: string) =
     if line[0] = '(' && args = (0, line.Length - 1) then
         removeExtraBrackets line[1 .. line.Length - 2]
     else
-        (new string (line), args)
+        (line, args)
 
 // Splitting a string by operations.
 let rec breakLine (lbracket: int) (rbracket: int) (symbol: char) (line: string) =
@@ -484,7 +484,7 @@ let convertToFunc (line: string) : Node =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
-        //printfn "l: %d r: %d => %s" l r removed
+        printfn "%s  %d %d " removed l r
 
         match removed with
         | val1 when 

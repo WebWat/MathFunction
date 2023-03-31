@@ -405,6 +405,7 @@ let getSymbolIndexLeft2Right (leftBracket: int) (rightBracket: int) (symbol: cha
     // Check that the symbol is not in other brackets
     let rec checkLeftSide (line: string) (lLast: int) index =
         let subLine = line[.. lLast - 2]
+
         let (left, right) = getBracketsIndexesLeft2Right subLine
 
         // If there are no brackets or the symbol between the brackets
@@ -440,7 +441,7 @@ let rec breakLine (lbracket: int) (rbracket: int) (symbol: char) (line: string) 
             getSymbolIndexRight2Left l r symbol line
         else
             getSymbolIndexLeft2Right lbracket rbracket symbol line
-
+    
     // If symbol not found
     if index = -1 then
         ("-", "-")
@@ -484,7 +485,7 @@ let convertToFunc (line: string) : Node =
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 
-        printfn "%s  %d %d " removed l r
+        //printfn "%s  %d %d " removed l r
 
         match removed with
         | val1 when 
@@ -520,6 +521,7 @@ let convertToFunc (line: string) : Node =
                   Left = None
                   Right = Some(convert (val1[l + 1 .. r - 1])) }
             | _ ->
+                
                 let (lft, rght, i) =
                     searchSymbol (breakLine l r operations[0] removed) removed l r 0
 

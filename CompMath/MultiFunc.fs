@@ -1,6 +1,7 @@
 ﻿namespace CompMath
 
 open Node
+open Parser
 open Derivative
 
 type public FunctionMult(node: Node) =
@@ -22,7 +23,7 @@ type public FunctionMult(node: Node) =
                 elif isArg node.Right.Value then
                     Array.append (find node.Left.Value values) [|node.Right.Value.Operation|]
                 else
-                    [||]
+                    Array.append (find node.Left.Value values) (find node.Right.Value values)
             | (_, true) -> 
                 if isArg node.Right.Value then
                     Array.append values [|node.Right.Value.Operation|]
@@ -30,7 +31,9 @@ type public FunctionMult(node: Node) =
                     find node.Right.Value values
             | _ -> [||]
 
-        find node [||] |> Array.distinct
+        find node [||] |> Array.sort |> Array.distinct
+
+    override _.ToString() = node.ToString()
              
             
 

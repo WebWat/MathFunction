@@ -52,14 +52,40 @@ while true do
     printfn "%A" args
 
     let mutable floors: float array = [||]
+    let mutable errors: float array = [||]
+
 
     for elem in args do
-        printf "%c: " elem
-        floors <- Array.append floors [|(float(Console.ReadLine()))|]
+        printf "\n\t%c: " elem
+        let input = float(Console.ReadLine())
+        floors <- Array.append floors [|input|]
+
+        printf "\terror: "
+        errors <- Array.append errors [|abs(float(Console.ReadLine()) / input)|]
 
     let map = [|for i = 0 to args.Length - 1 do i|] |> Array.map (fun x -> (args[x], floors[x])) |> Map.ofArray
+    printfn "Map: %A" map
+    
+    printfn "Relative errors: %A" (Array.map (fun (x: float) -> String.Format("{0:f2} %", x * 100.)) errors)
+    
+    let result = func.Calc map
+    printfn "Function result: %f" result
 
-    printfn "Map: %A\nResult: %f" map (func.Calc map)
+    let mutable relative = 0.
+
+    for i = 0 to args.Length - 1 do
+        let derivative = func.PartialDerivative args[i]
+        let funcResult = abs (floors[i] * (derivative.Calc map)) / abs result
+        printfn "v_%d = %f" (i + 1) funcResult
+
+        relative <- relative + funcResult * errors[i]
+    
+    printfn "Relative: %.2f %%" (relative * 100.)
+
+    let absolute = abs result * relative
+    printfn "Absolute: %f" absolute
+    
+    printfn "Answer: %f +- %f (%.2f %%)" result absolute (relative * 100.)
 
 
 

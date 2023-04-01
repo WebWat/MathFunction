@@ -1,7 +1,8 @@
 ﻿module ConvertAndCalculate
 
-open System
 open Node
+open Parser
+open System
 open Xunit
 
 let calculator (line: string) : float =

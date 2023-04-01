@@ -1,6 +1,7 @@
 ﻿namespace CompMath
 
 open Node
+open Parser
 open Derivative
 
 type public FunctionX(node: Node) =
@@ -11,3 +12,5 @@ type public FunctionX(node: Node) =
     override _.Calc(x: float) = calculateFunc node (Map [('x', x)])
 
     override _.Derivative() = FunctionX (derivativeFunc node 'x')
+
+    override _.ToString() = node.ToString()

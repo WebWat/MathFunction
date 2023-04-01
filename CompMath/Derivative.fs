@@ -5,12 +5,11 @@ open Node
 let derivativeFunc (node: Node) (d: char) : Node =   
     let rec op (node: Node) : Node =
         match node.Operation with
-        | val1 when isConst(node) ->
-            getNumber 0
         | val1 when val1 = d ->
             getNumber 1 
-        | '+'
-        | '-' ->
+        | val1 when isConst node || isArg node ->
+            getNumber 0
+        | '+' | '-' ->
             { Value = 0
               Operation = node.Operation
               Left = Some(op node.Left.Value)

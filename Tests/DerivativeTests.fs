@@ -1,7 +1,7 @@
 ﻿module DerivativeTests
 
-open System
-open Node
+
+open Parser
 open Derivative
 open Xunit
 

@@ -12,7 +12,7 @@ type public FunctionMult(node: Node) =
 
     member _.PartialDerivative(arg: char) = FunctionMult (derivativeFunc node arg)
 
-    member _.ArgsCount() : char array =
+    member _.GetArgs() : char array =
         let rec find (node: Node) (values: char array) : char array =
             match (node.Left.IsSome, node.Right.IsSome) with
             | (true, true) -> 

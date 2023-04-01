@@ -48,7 +48,7 @@ while true do
     printf "\nInput function: "
     let text = Console.ReadLine()
     let func = FunctionMult text
-    let args = func.ArgsCount()
+    let args = func.GetArgs()
     printfn "%A" args
 
     let mutable floors: float array = [||]

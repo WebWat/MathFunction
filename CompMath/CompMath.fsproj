@@ -11,7 +11,7 @@
     <Compile Include="Function.fs" />
     <Compile Include="Derivative.fs" />
     <Compile Include="FunctionX.fs" />
-    <Compile Include="MultiFunc.fs" />
+    <Compile Include="FunctionMult.fs" />
     <Compile Include="Limits.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

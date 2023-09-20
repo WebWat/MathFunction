@@ -30,7 +30,7 @@ let _default (text: string) : unit =
 
         for i in -1.0..0.2..1.0 do
             printf "y(%f) = %f | " i (func.Calc i)
-            printf "y'(%f) = %f | " i (der.Calc i)
+            printfn "y'(%f) = %f " i (der.Calc i)
 
         stopwatch.Stop()
 

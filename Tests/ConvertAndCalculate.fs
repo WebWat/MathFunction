@@ -6,7 +6,7 @@ open System
 open Xunit
 
 let calculator (line: string) : float =
-    calculateFunc (convertToFunc line) (Map [])
+    calculateFunction (convertToFunction line) (Map [])
 
 [<Fact>]
 let ``Float & int parse`` () =
@@ -103,23 +103,25 @@ let ``Complex operation`` () =
 // TODO: Need more!
 [<Fact>]
 let ``Functions with parametrs`` () =
-    Assert.Equal(14., calculateFunc (convertToFunc "x^3+2*x+2") (Map [('x', 2)]))
-    Assert.Equal(-10., calculateFunc (convertToFunc "x^3+2*x+2") (Map [('x', -2)]))
-
-    Assert.Equal(2., calculateFunc (convertToFunc "x*2/x") (Map [('x', Math.PI)]))
-
-    Assert.Equal(-9., calculateFunc (convertToFunc "-a^b") (Map [('a', 3); ('b', 2)]))
+    Assert.Equal(14., calculateFunction (convertToFunction "x^3+2*x+2") (Map [('x', 2)]))
+    Assert.Equal(-10., calculateFunction (convertToFunction "x^3+2*x+2") (Map [('x', -2)]))
+    Assert.Equal(2., calculateFunction (convertToFunction "x*2/x") (Map [('x', Math.PI)]))
+    Assert.Equal(-9., calculateFunction (convertToFunction "-a^b") (Map [('a', 3); ('b', 2)]))
 
 
 [<Fact>]
 let ``Exceptions`` () =
     Assert.Throws<UnknownOperation>(new Action(fun _ -> 
-        convertToFunc "awdh9q7yd3+7ax&^&"; ()))
+        convertToFunction "awdh9q7yd3+7ax&^&" |> ignore; ())) 
+        |> ignore
     Assert.Throws<ArgumentNotExist>(new Action(fun _ -> 
-        calculateFunc (convertToFunc "x^2+2*x+2") (Map []); ()))
+        calculateFunction (convertToFunction "x^2+2*x+2") (Map []) |> ignore; ())) 
+        |> ignore
     Assert.Throws<InvalidBracket>(new Action(fun _ -> 
-        convertToFunc "(2+3))"; ()))
+        convertToFunction "(2+3))" |> ignore; ())) 
+        |> ignore
     Assert.Throws<InvalidModule>(new Action(fun _ -> 
-        convertToFunc "|2+3||"; ()))
+        convertToFunction "|2+3||" |> ignore; ())) 
+        |> ignore
 
 

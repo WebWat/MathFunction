@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CompMath\CompMath.fsproj" />
+    <ProjectReference Include="..\MathFunction\MathFunction.fsproj" />
   </ItemGroup>
 
 </Project>

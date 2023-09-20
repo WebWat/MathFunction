@@ -1,12 +1,11 @@
 ﻿module DerivativeTests
 
-
 open Parser
 open Derivative
 open Xunit
 
 let derivative (line: string) : string =
-    (derivativeFunc (convertToFunc line) ('x')).ToString()
+    (functionDerivative (convertToFunction line) ('x')).ToString()
 
 [<Fact>]
 let ``Consts`` () =
@@ -128,8 +127,7 @@ let ``Complex`` () =
         "*(-1*1/x/ln(x)^2))/cos(1/ln(x))^2+((1+0)*(x+3)+(x+2)*(1+0))*" +
         "(x^3-1)+(x+2)*(x+3)*(3*x^2-0))*exp(sin(x))+((-1)*sin(2*x)" +
         "/cos(1/ln(x))+(x+2)*(x+3)*(x^3-1))*exp(sin(x))*cos(x)", 
-        derivative "((-1)*sin(2*x)/cos(1/ln(x))+(x+2)*(x+3)*(x^3-1))*exp(sin(x))"
-        )
+        derivative "((-1)*sin(2*x)/cos(1/ln(x))+(x+2)*(x+3)*(x^3-1))*exp(sin(x))")
 
 
 

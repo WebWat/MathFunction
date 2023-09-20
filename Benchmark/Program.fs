@@ -1,5 +1,4 @@
-﻿
-open System
+﻿open System
 open Bench
 open BenchmarkDotNet.Running
 

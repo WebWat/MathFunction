@@ -4,10 +4,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CalculatorUI"
+        xmlns:u="clr-namespace:CalculatorUI.UserControls"
         mc:Ignorable="d"
-        Title="Calcultor" Height="450" Width="800" ResizeMode="NoResize">
+        Title="Calcultor" MinHeight="600" MinWidth="1000" Height="600" Width="1000">
     <Grid>
-        <TextBox x:Name="text" HorizontalAlignment="Center" FontSize="20" TextAlignment="Center" VerticalContentAlignment="Center" Height="50" Margin="0,154,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="550" TextChanged="TextChanged"/>
-        <TextBlock x:Name="result" HorizontalAlignment="Center" Text="0" TextAlignment="Center" FontSize="20" FontWeight="Bold" Height="30" Margin="0,244,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="260"/>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="252"></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+            <TextBox Name="text" Width="250" Grid.Column="0" HorizontalAlignment="Center" FontSize="15" TextAlignment="Center" VerticalContentAlignment="Center" Height="40" VerticalAlignment="Top" TextChanged="TextChanged"/>
+        </StackPanel>
+        <u:GraphPlotter x:Name="Graph" Grid.Column="1"></u:GraphPlotter>
     </Grid>
 </Window>

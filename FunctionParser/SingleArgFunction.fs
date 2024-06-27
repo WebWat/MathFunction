@@ -1,9 +1,10 @@
-﻿namespace MathFunction
+﻿namespace FunctionParser
 
 open Node
 
 [<AbstractClass>]
-type SingleArgFunction(node: Node) =
+type public SingleArgFunction(node: Node) =
+
     abstract Calc: float -> float
 
     abstract Derivative: unit -> SingleArgFunction

@@ -1,4 +1,4 @@
-﻿namespace MathFunction
+﻿namespace FunctionParser
 
 open Node
 open Parser

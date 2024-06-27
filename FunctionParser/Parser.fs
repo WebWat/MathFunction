@@ -7,6 +7,7 @@ open System.Globalization
 exception ArgumentNotExist of string
 exception InvalidBracket of string
 exception InvalidModule of string
+exception IncorrectLine of string
 
 let isNumber (number: string) (temp: outref<float>) =
     // Parse with a dot
@@ -194,6 +195,9 @@ let convertToFunction (line: string) : Node =
     let mutable temp = 0.
 
     let rec convert (line: string) =
+        if String.IsNullOrEmpty line then
+            raise (IncorrectLine "Incorrect line")
+
         // Removing extra brackets
         let (removed, (l, r)) = removeExtraBrackets line
 

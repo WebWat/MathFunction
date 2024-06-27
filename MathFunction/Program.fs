@@ -1,6 +1,6 @@
 ﻿open System
 open System.Diagnostics
-open MathFunction
+open FunctionParser
 
 
 let _default (text: string) : unit =

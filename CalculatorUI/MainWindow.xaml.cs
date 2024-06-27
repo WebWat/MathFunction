@@ -1,7 +1,7 @@
-﻿using MathFunction;
+﻿using FunctionParser;
+using System;
 using System.Windows;
 using System.Windows.Controls;
-using static Node;
 
 namespace CalculatorUI
 {
@@ -19,19 +19,14 @@ namespace CalculatorUI
         {
             try
             {
-                if (string.IsNullOrEmpty(text.Text))
+                if (!string.IsNullOrEmpty(text.Text))
                 {
-                    result.Text = "0,000";
-                }
-                else
-                {
-                    var func = new FunctionX(text.Text);
-                    result.Text = func.Calc(0).ToString("f3");
+                    Graph.FunctionX = new FunctionX(text.Text);
+                    Graph.Update();
                 }
             }
-            catch (UnknownOperation)
+            catch (Exception)
             {
-                result.Text = nameof (UnknownOperation);
             }
         }
     }

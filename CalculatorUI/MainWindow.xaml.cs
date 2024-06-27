@@ -27,6 +27,7 @@ namespace CalculatorUI
             }
             catch (Exception)
             {
+
             }
         }
     }

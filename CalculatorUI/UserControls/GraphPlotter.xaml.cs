@@ -1,6 +1,8 @@
 ﻿using FunctionParser;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,9 +27,9 @@ namespace CalculatorUI.UserControls
         public double CenterX { get; set; } = 0;
         public double CenterY { get; set; } = 0;
 
-        public int DotsCount { get; set; } = 5000;
+        public int DotsCount { get; set; } = 1000;
         
-        public double Scale { get; set; } = 50;
+        public double Scale { get; set; } = 10;
 
         private double _diminisher = 1;
 
@@ -39,7 +41,10 @@ namespace CalculatorUI.UserControls
 
         public void Update()
         {
+            if (FunctionX == null) return;
+
             MainGrid.Children.Clear();
+
 
             if (CenterX == 0 && CenterY == 0)
             {
@@ -68,18 +73,18 @@ namespace CalculatorUI.UserControls
                 MainGrid.Children.Add(lineX);
                 MainGrid.Children.Add(lineY);
 
-                var labelX = new Label();
-                var offsetX = ActualWidth - GetGridX(Scale / 2);
-                labelX.Margin = new Thickness(offsetX, centerForX, 0, 0);
-                labelX.Content = (Scale / 2).ToString();
+                //var labelX = new Label();
+                //var offsetX = ActualWidth - GetGridX(Scale / 2);
+                //labelX.Margin = new Thickness(offsetX, centerForX, 0, 0);
+                //labelX.Content = (Scale / 2).ToString();
 
-                var labelY = new Label();
-                var offsetY = ActualHeight - GetGridY(-Scale / 2);
-                labelY.Margin = new Thickness(centerForY, offsetY, 0, 0);
-                labelY.Content = (Scale / 2).ToString();
+                //var labelY = new Label();
+                //var offsetY = ActualHeight - GetGridY(-Scale / 2);
+                //labelY.Margin = new Thickness(centerForY, offsetY, 0, 0);
+                //labelY.Content = (Scale / 2).ToString();
 
-                MainGrid.Children.Add(labelX);
-                MainGrid.Children.Add(labelY);
+                //MainGrid.Children.Add(labelX);
+                //MainGrid.Children.Add(labelY);
             }
 
             var path = new Path();
@@ -101,7 +106,7 @@ namespace CalculatorUI.UserControls
                     list.Add(
                         new LineSegment
                         {
-                            Point = new Point 
+                            Point = new System.Windows.Point 
                             { 
                                 X = GetGridX(i * step), 
                                 Y = GetGridY(value) 
@@ -134,6 +139,7 @@ namespace CalculatorUI.UserControls
 
             path.Data = geometry;
             path.Stroke = Brushes.Red;
+            path.StrokeThickness = 2;
             MainGrid.Children.Add(path);
         }
 
@@ -160,6 +166,25 @@ namespace CalculatorUI.UserControls
 
             if (Scale > 0)
                 Update();
+
+            //Debug.WriteLine("uhhh");
+        }
+
+        //private void MouseMove(object sender, MouseEventArgs e)
+        //{
+        //    if (e.LeftButton == MouseButtonState.Pressed)
+        //    {
+        //        var point = e.GetPosition(MainGrid);
+        //        Debug.WriteLine(point.X + " " + point.Y);
+        //    }
+
+        //    //Debug.WriteLine("uhhh");
+        //}
+
+        private void Click(object sender, RoutedEventArgs e)
+        {
+            var point = Mouse.GetPosition(MainGrid);
+            Debug.WriteLine(point.X + " " + point.Y);
         }
     }
 }

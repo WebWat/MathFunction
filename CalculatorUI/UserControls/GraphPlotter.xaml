@@ -6,6 +6,10 @@
              xmlns:local="clr-namespace:CalculatorUI.UserControls"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid x:Name="MainGrid" MouseWheel="ScaleChanged">
+    <Grid>
+        <RepeatButton MouseWheel="ScaleChanged" Opacity="0" Panel.ZIndex="100" Click="Click"></RepeatButton>
+        <Border BorderBrush="Black" BorderThickness="1">
+            <Grid x:Name="MainGrid"></Grid>
+        </Border>
     </Grid>
 </UserControl>

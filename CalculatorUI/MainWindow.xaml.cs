@@ -1,7 +1,9 @@
 ﻿using FunctionParser;
 using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace CalculatorUI
 {
@@ -29,6 +31,12 @@ namespace CalculatorUI
             {
 
             }
+        }
+
+        private void UpdateDotsCount_Click(object sender, RoutedEventArgs e)
+        {
+            Graph.DotsCount = int.Parse(DotsCount.Text);
+            Graph.Update();
         }
     }
 }

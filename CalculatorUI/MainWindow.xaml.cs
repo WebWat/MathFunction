@@ -24,7 +24,7 @@ namespace CalculatorUI
                 if (!string.IsNullOrEmpty(text.Text))
                 {
                     Graph.FunctionX = new FunctionX(text.Text);
-                    Graph.Update();
+                    Graph.UpdateGraph();
                 }
             }
             catch (Exception)
@@ -36,7 +36,7 @@ namespace CalculatorUI
         private void UpdateDotsCount_Click(object sender, RoutedEventArgs e)
         {
             Graph.DotsCount = int.Parse(DotsCount.Text);
-            Graph.Update();
+            Graph.UpdateGraph();
         }
     }
 }

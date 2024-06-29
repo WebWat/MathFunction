@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,13 +24,16 @@ namespace CalculatorUI.UserControls
     {
         public FunctionX FunctionX { get; set; }
         public double CenterX { get; set; } = 0;
+        private double _centerGridX;
         public double CenterY { get; set; } = 0;
+        private double _centerGridY;
 
         public int DotsCount { get; set; } = 1000;
         
         public double Scale { get; set; } = 10;
 
         private double _diminisher = 1;
+        private Point _lastPoint;
 
 
         public GraphPlotter()
@@ -39,53 +41,11 @@ namespace CalculatorUI.UserControls
             InitializeComponent();
         }
 
-        public void Update()
+        public void UpdateGraph(bool needClear = true)
         {
             if (FunctionX == null) return;
 
-            MainGrid.Children.Clear();
-
-
-            if (CenterX == 0 && CenterY == 0)
-            {
-                var centerForX = ActualHeight / 2;
-
-                var lineX = new Line
-                {
-                    X1 = 0,
-                    Y1 = centerForX,
-                    X2 = ActualWidth,
-                    Y2 = centerForX,
-                    Stroke = Brushes.Black,
-                };
-
-                var centerForY = ActualWidth / 2;
-
-                var lineY = new Line
-                {
-                    X1 = centerForY,
-                    Y1 = 0,
-                    X2 = centerForY,
-                    Y2 = ActualHeight,
-                    Stroke = Brushes.Black,
-                };
-
-                MainGrid.Children.Add(lineX);
-                MainGrid.Children.Add(lineY);
-
-                //var labelX = new Label();
-                //var offsetX = ActualWidth - GetGridX(Scale / 2);
-                //labelX.Margin = new Thickness(offsetX, centerForX, 0, 0);
-                //labelX.Content = (Scale / 2).ToString();
-
-                //var labelY = new Label();
-                //var offsetY = ActualHeight - GetGridY(-Scale / 2);
-                //labelY.Margin = new Thickness(centerForY, offsetY, 0, 0);
-                //labelY.Content = (Scale / 2).ToString();
-
-                //MainGrid.Children.Add(labelX);
-                //MainGrid.Children.Add(labelY);
-            }
+            if (needClear) MainGrid.Children.Clear();
 
             var path = new Path();
             var geometry = new PathGeometry();
@@ -106,7 +66,7 @@ namespace CalculatorUI.UserControls
                     list.Add(
                         new LineSegment
                         {
-                            Point = new System.Windows.Point 
+                            Point = new Point 
                             { 
                                 X = GetGridX(i * step), 
                                 Y = GetGridY(value) 
@@ -148,11 +108,12 @@ namespace CalculatorUI.UserControls
 
         private double GetGridY(double y)
         {
-            var updatedScale = (Scale * 2 * ActualHeight) / ActualWidth;
-            var position = y + updatedScale / 2;
+            var updatedScale = Scale * 2 * ActualHeight / ActualWidth;
+            var position = y + updatedScale / 2 - CenterY;
             return ActualHeight - position * ActualHeight / updatedScale;
         }
 
+        // need autoscale
         private void ScaleChanged(object sender, MouseWheelEventArgs e)
         {
             if (e.Delta > 0)
@@ -165,26 +126,99 @@ namespace CalculatorUI.UserControls
             }
 
             if (Scale > 0)
-                Update();
-
-            //Debug.WriteLine("uhhh");
+                UpdateGraph();
         }
 
-        //private void MouseMove(object sender, MouseEventArgs e)
-        //{
-        //    if (e.LeftButton == MouseButtonState.Pressed)
-        //    {
-        //        var point = e.GetPosition(MainGrid);
-        //        Debug.WriteLine(point.X + " " + point.Y);
-        //    }
-
-        //    //Debug.WriteLine("uhhh");
-        //}
-
-        private void Click(object sender, RoutedEventArgs e)
+        private void PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            var point = Mouse.GetPosition(MainGrid);
-            Debug.WriteLine(point.X + " " + point.Y);
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                var point = Mouse.GetPosition(MainGrid);
+
+                if (_lastPoint == default)
+                {
+                    _lastPoint = point;
+                    return;
+                }
+
+                MainGrid.Children.Clear();
+
+                var offsetX = point.X - _lastPoint.X;
+                var offsetY = point.Y - _lastPoint.Y;
+
+                _centerGridX += offsetY;
+                _centerGridY += offsetX;
+
+                var lineX = new Line
+                {
+                    X1 = 0,
+                    Y1 = _centerGridX,
+                    X2 = ActualWidth,
+                    Y2 = _centerGridX,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1.5
+                };
+
+                var lineY = new Line
+                {
+                    X1 = _centerGridY,
+                    Y1 = 0,
+                    X2 = _centerGridY,
+                    Y2 = ActualHeight,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1.5
+                };
+
+                MainGrid.Children.Add(lineX);
+                MainGrid.Children.Add(lineY);
+
+                _lastPoint = point;
+                CenterX -= offsetX * 2 * Scale / ActualWidth;
+
+                var updatedScale = Scale * 2 * ActualHeight / ActualWidth;
+                CenterY += offsetY * updatedScale / ActualHeight;
+
+                //Debug.WriteLine("point: " + point.X + " " + point.Y);
+                //Debug.WriteLine("center: " + CenterX + " " + CenterY);
+                //Debug.WriteLine("offset:" + offsetX + " " + offsetY);
+
+                UpdateGraph(false);
+            }
+        }
+
+        private void PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            _lastPoint = default;
+        }
+
+        private void LoadedEvent(object sender, RoutedEventArgs e)
+        {
+            _centerGridX = ActualHeight / 2;
+
+            var lineX = new Line
+            {
+                X1 = 0,
+                Y1 = _centerGridX,
+                X2 = ActualWidth,
+                Y2 = _centerGridX,
+                Stroke = Brushes.Black,
+                StrokeThickness = 1.5
+            };
+
+            _centerGridY = ActualWidth / 2;
+
+            var lineY = new Line
+            {
+                X1 = _centerGridY,
+                Y1 = 0,
+                X2 = _centerGridY,
+                Y2 = ActualHeight,
+                Stroke = Brushes.Black,
+                StrokeThickness = 1.5
+            };
+
+            MainGrid.Children.Add(lineX);
+            MainGrid.Children.Add(lineY);
         }
     }
 }

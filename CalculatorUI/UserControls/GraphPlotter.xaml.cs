@@ -23,9 +23,9 @@ namespace CalculatorUI.UserControls
     public partial class GraphPlotter : UserControl
     {
         public FunctionX FunctionX { get; set; }
-        public double CenterX { get; set; } = 0;
+        private double _centerX = 0;
         private double _centerGridX;
-        public double CenterY { get; set; } = 0;
+        private double _centerY = 0;
         private double _centerGridY;
 
         public int DotsCount { get; set; } = 1000;
@@ -47,15 +47,44 @@ namespace CalculatorUI.UserControls
 
             if (needClear) MainGrid.Children.Clear();
 
+            if (_centerX == 0 && _centerY == 0)
+            {
+                _centerGridX = ActualHeight / 2;
+
+                var lineX = new Line
+                {
+                    X1 = 0,
+                    Y1 = _centerGridX,
+                    X2 = ActualWidth,
+                    Y2 = _centerGridX,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1.5
+                };
+
+                _centerGridY = ActualWidth / 2;
+
+                var lineY = new Line
+                {
+                    X1 = _centerGridY,
+                    Y1 = 0,
+                    X2 = _centerGridY,
+                    Y2 = ActualHeight,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1.5
+                };
+
+                MainGrid.Children.Add(lineX);
+                MainGrid.Children.Add(lineY);
+            }
+
             var path = new Path();
             var geometry = new PathGeometry();
 
             var list = new List<PathSegment>();
-            var minX = CenterX - Scale;
-            var maxX = CenterY + Scale;
+            var minX = _centerX - Scale;
+            var maxX = _centerY + Scale;
             var step = (maxX - minX) / DotsCount;
-            //var yLimit = (CenterY + Scale, CenterY - Scale);
-            Predicate<double> inLimit = val => val <= CenterY + Scale && val >= CenterY - Scale;
+            Predicate<double> inLimit = val => val <= _centerY + Scale && val >= _centerY - Scale;
 
             for (int i = 0; i <= DotsCount; i++)
             {
@@ -109,7 +138,7 @@ namespace CalculatorUI.UserControls
         private double GetGridY(double y)
         {
             var updatedScale = Scale * 2 * ActualHeight / ActualWidth;
-            var position = y + updatedScale / 2 - CenterY;
+            var position = y + updatedScale / 2 - _centerY;
             return ActualHeight - position * ActualHeight / updatedScale;
         }
 
@@ -173,10 +202,10 @@ namespace CalculatorUI.UserControls
                 MainGrid.Children.Add(lineY);
 
                 _lastPoint = point;
-                CenterX -= offsetX * 2 * Scale / ActualWidth;
+                _centerX -= offsetX * 2 * Scale / ActualWidth;
 
                 var updatedScale = Scale * 2 * ActualHeight / ActualWidth;
-                CenterY += offsetY * updatedScale / ActualHeight;
+                _centerY += offsetY * updatedScale / ActualHeight;
 
                 //Debug.WriteLine("point: " + point.X + " " + point.Y);
                 //Debug.WriteLine("center: " + CenterX + " " + CenterY);
@@ -189,36 +218,6 @@ namespace CalculatorUI.UserControls
         private void PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
             _lastPoint = default;
-        }
-
-        private void LoadedEvent(object sender, RoutedEventArgs e)
-        {
-            _centerGridX = ActualHeight / 2;
-
-            var lineX = new Line
-            {
-                X1 = 0,
-                Y1 = _centerGridX,
-                X2 = ActualWidth,
-                Y2 = _centerGridX,
-                Stroke = Brushes.Black,
-                StrokeThickness = 1.5
-            };
-
-            _centerGridY = ActualWidth / 2;
-
-            var lineY = new Line
-            {
-                X1 = _centerGridY,
-                Y1 = 0,
-                X2 = _centerGridY,
-                Y2 = ActualHeight,
-                Stroke = Brushes.Black,
-                StrokeThickness = 1.5
-            };
-
-            MainGrid.Children.Add(lineX);
-            MainGrid.Children.Add(lineY);
         }
     }
 }

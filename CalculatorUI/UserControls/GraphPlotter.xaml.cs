@@ -22,7 +22,7 @@ namespace CalculatorUI.UserControls
     /// </summary>
     public partial class GraphPlotter : UserControl
     {
-        public FunctionX FunctionX { get; set; }
+        public FunctionX FunctionX;
         private double _centerX = 0;
         private double _centerGridX;
         private double _centerY = 0;
@@ -32,7 +32,6 @@ namespace CalculatorUI.UserControls
         
         public double Scale { get; set; } = 10;
 
-        private double _diminisher = 1;
         private Point _lastPoint;
 
 
@@ -41,50 +40,22 @@ namespace CalculatorUI.UserControls
             InitializeComponent();
         }
 
-        public void UpdateGraph(bool needClear = true)
+
+        public void UpdateGraph()
         {
             if (FunctionX == null) return;
 
-            if (needClear) MainGrid.Children.Clear();
-
-            if (_centerX == 0 && _centerY == 0)
-            {
-                _centerGridX = ActualHeight / 2;
-
-                var lineX = new Line
-                {
-                    X1 = 0,
-                    Y1 = _centerGridX,
-                    X2 = ActualWidth,
-                    Y2 = _centerGridX,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 1.5
-                };
-
-                _centerGridY = ActualWidth / 2;
-
-                var lineY = new Line
-                {
-                    X1 = _centerGridY,
-                    Y1 = 0,
-                    X2 = _centerGridY,
-                    Y2 = ActualHeight,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 1.5
-                };
-
-                MainGrid.Children.Add(lineX);
-                MainGrid.Children.Add(lineY);
-            }
+            MainGrid.Children.Clear();
 
             var path = new Path();
             var geometry = new PathGeometry();
 
             var list = new List<PathSegment>();
             var minX = _centerX - Scale;
-            var maxX = _centerY + Scale;
+            var maxX = _centerX + Scale;
             var step = (maxX - minX) / DotsCount;
-            Predicate<double> inLimit = val => val <= _centerY + Scale && val >= _centerY - Scale;
+            var updatedScale = Scale * ActualHeight / ActualWidth;
+            Predicate<double> inLimit = val => val <= _centerY + updatedScale && val >= _centerY - updatedScale;
 
             for (int i = 0; i <= DotsCount; i++)
             {
@@ -113,7 +84,8 @@ namespace CalculatorUI.UserControls
                             new PathGeometry([pathFigure])
                         );
                     }
-                    list.Clear();
+
+                    if (list.Count != 0) list.Clear();
                 }
             }
 
@@ -125,15 +97,15 @@ namespace CalculatorUI.UserControls
                     new PathGeometry([pathFigure])
                 );
             }
-
+            
             path.Data = geometry;
             path.Stroke = Brushes.Red;
-            path.StrokeThickness = 2;
+            path.StrokeThickness = 3;
             MainGrid.Children.Add(path);
         }
 
         private double GetGridX(double position)
-            => position * ActualWidth / (Scale * 2);
+            => position * ActualWidth / (Scale * 2) - 1;
 
         private double GetGridY(double y)
         {
@@ -147,15 +119,26 @@ namespace CalculatorUI.UserControls
         {
             if (e.Delta > 0)
             {
-                Scale -= _diminisher;
+                Scale -= Scale * 0.1;
             }
             else
             {
-                Scale += _diminisher;
+                Scale += Scale * 0.1;
             }
 
-            if (Scale > 0)
-                UpdateGraph();
+            _centerGridX = GetGridY(0);
+            AxisX.X1 = 0;
+            AxisX.Y1 = _centerGridX;
+            AxisX.X2 = ActualWidth;
+            AxisX.Y2 = _centerGridX;
+
+            _centerGridY = GetGridX(_centerX);
+            AxisY.X1 = _centerGridY;
+            AxisY.Y1 = 0;
+            AxisY.X2 = _centerGridY;
+            AxisY.Y2 = ActualHeight;
+            AxisY.Opacity = _centerGridY > 0 ? 1 : 0;
+            UpdateGraph();
         }
 
         private void PreviewMouseMove(object sender, MouseEventArgs e)
@@ -170,54 +153,56 @@ namespace CalculatorUI.UserControls
                     return;
                 }
 
-                MainGrid.Children.Clear();
-
                 var offsetX = point.X - _lastPoint.X;
                 var offsetY = point.Y - _lastPoint.Y;
 
                 _centerGridX += offsetY;
                 _centerGridY += offsetX;
 
-                var lineX = new Line
-                {
-                    X1 = 0,
-                    Y1 = _centerGridX,
-                    X2 = ActualWidth,
-                    Y2 = _centerGridX,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 1.5
-                };
+                AxisX.X1 = 0;
+                AxisX.Y1 = _centerGridX;
+                AxisX.X2 = ActualWidth;
+                AxisX.Y2 = _centerGridX;
 
-                var lineY = new Line
-                {
-                    X1 = _centerGridY,
-                    Y1 = 0,
-                    X2 = _centerGridY,
-                    Y2 = ActualHeight,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 1.5
-                };
+                AxisY.X1 = _centerGridY;
+                AxisY.Y1 = 0;
+                AxisY.X2 = _centerGridY;
+                AxisY.Y2 = ActualHeight;
+                AxisY.Opacity = _centerGridY > 0 ? 1 : 0;
 
-                MainGrid.Children.Add(lineX);
-                MainGrid.Children.Add(lineY);
-
-                _lastPoint = point;
                 _centerX -= offsetX * 2 * Scale / ActualWidth;
 
                 var updatedScale = Scale * 2 * ActualHeight / ActualWidth;
                 _centerY += offsetY * updatedScale / ActualHeight;
 
-                //Debug.WriteLine("point: " + point.X + " " + point.Y);
-                //Debug.WriteLine("center: " + CenterX + " " + CenterY);
-                //Debug.WriteLine("offset:" + offsetX + " " + offsetY);
+                _lastPoint = point;
 
-                UpdateGraph(false);
+                Debug.WriteLine(_centerX + " " + _centerY);
+
+                UpdateGraph();
             }
         }
 
         private void PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
             _lastPoint = default;
+        }
+
+        private void UserControl_Loaded(object sender, RoutedEventArgs e)
+        {
+            _centerGridX = ActualHeight / 2;
+
+            AxisX.X1 = 0;
+            AxisX.Y1 = _centerGridX;
+            AxisX.X2 = ActualWidth;
+            AxisX.Y2 = _centerGridX;
+
+            _centerGridY = ActualWidth / 2;
+
+            AxisY.X1 = _centerGridY;
+            AxisY.Y1 = 0;
+            AxisY.X2 = _centerGridY;
+            AxisY.Y2 = ActualHeight;
         }
     }
 }

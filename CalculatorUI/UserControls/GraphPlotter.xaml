@@ -8,8 +8,10 @@
              d:DesignHeight="450" d:DesignWidth="800" Loaded="UserControl_Loaded">
     <Grid>
         <Button MouseWheel="ScaleChanged" Opacity="0" Panel.ZIndex="100" PreviewMouseUp="PreviewMouseUp" PreviewMouseMove="PreviewMouseMove"></Button>
-        <Line Name="AxisY" Stroke="Black" StrokeThickness="1.5"></Line>
-        <Line Name="AxisX" Stroke="Black" StrokeThickness="1.5"></Line>
+        <Line Name="ViewY" Stroke="Gray" StrokeThickness="1"></Line>
+        <Line Name="ViewX" Stroke="Gray" StrokeThickness="1"></Line>
+        <Line Name="AxisY" Stroke="Black" StrokeThickness="2"></Line>
+        <Line Name="AxisX" Stroke="Black" StrokeThickness="2"></Line>
         <Border BorderBrush="Black" BorderThickness="1">
             <Grid x:Name="MainGrid"></Grid>
         </Border>

@@ -100,12 +100,12 @@ namespace CalculatorUI.UserControls
             
             path.Data = geometry;
             path.Stroke = Brushes.Red;
-            path.StrokeThickness = 3;
+            path.StrokeThickness = 4;
             MainGrid.Children.Add(path);
         }
 
         private double GetGridX(double position)
-            => position * ActualWidth / (Scale * 2) - 1;
+            => position * ActualWidth / (Scale * 2);
 
         private double GetGridY(double y)
         {
@@ -132,12 +132,34 @@ namespace CalculatorUI.UserControls
             AxisX.X2 = ActualWidth;
             AxisX.Y2 = _centerGridX;
 
-            _centerGridY = GetGridX(_centerX);
+            var minX = _centerX - Scale;
+            var maxX = _centerX + Scale;
+
+            if (minX < 0 && maxX > 0)
+            {
+                //var a = -minX;
+                //var interval = maxX - minX;
+
+                //var item = a * 100 / interval * 0.01;
+                //var current = 2 * Scale * item;
+
+                _centerGridY = GetGridX(-minX);
+            }
+            else if (maxX < 0 || minX > 0)
+            {
+                _centerGridY = 0;
+            }
+            else
+            {
+                throw new Exception("lol");
+            }
+
             AxisY.X1 = _centerGridY;
             AxisY.Y1 = 0;
             AxisY.X2 = _centerGridY;
             AxisY.Y2 = ActualHeight;
             AxisY.Opacity = _centerGridY > 0 ? 1 : 0;
+
             UpdateGraph();
         }
 
@@ -177,7 +199,7 @@ namespace CalculatorUI.UserControls
 
                 _lastPoint = point;
 
-                Debug.WriteLine(_centerX + " " + _centerY);
+                //Debug.WriteLine(_centerX + " " + _centerY);
 
                 UpdateGraph();
             }
@@ -197,12 +219,22 @@ namespace CalculatorUI.UserControls
             AxisX.X2 = ActualWidth;
             AxisX.Y2 = _centerGridX;
 
+            ViewX.X1 = 0;
+            ViewX.Y1 = _centerGridX;
+            ViewX.X2 = ActualWidth;
+            ViewX.Y2 = _centerGridX;
+
             _centerGridY = ActualWidth / 2;
 
             AxisY.X1 = _centerGridY;
             AxisY.Y1 = 0;
             AxisY.X2 = _centerGridY;
             AxisY.Y2 = ActualHeight;
+
+            ViewY.X1 = _centerGridY;
+            ViewY.Y1 = 0;
+            ViewY.X2 = _centerGridY;
+            ViewY.Y2 = ActualHeight;
         }
     }
 }

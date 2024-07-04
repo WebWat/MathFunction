@@ -23,6 +23,7 @@ namespace CalculatorUI
             {
                 if (!string.IsNullOrEmpty(text.Text))
                 {
+                    Graph.test.Clear();
                     Graph.FunctionX = new FunctionX(text.Text);
                     Graph.UpdateGraph();
                 }

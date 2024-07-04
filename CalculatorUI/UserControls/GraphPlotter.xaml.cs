@@ -28,7 +28,8 @@ namespace CalculatorUI.UserControls
         private double _centerY = 0;
         private double _centerGridY;
 
-        public int DotsCount { get; set; } = 1000;
+        public int DotsCount { get; set; } = 500;
+        public Dictionary<double, double> test = new();
         
         public double Scale { get; set; } = 10;
 
@@ -45,9 +46,6 @@ namespace CalculatorUI.UserControls
         {
             if (FunctionX == null) return;
 
-            MainGrid.Children.Clear();
-
-            var path = new Path();
             var geometry = new PathGeometry();
 
             var list = new List<PathSegment>();
@@ -60,7 +58,14 @@ namespace CalculatorUI.UserControls
             for (int i = 0; i <= DotsCount; i++)
             {
                 var currentX = minX + i * step;
-                var value = FunctionX.Calc(currentX);
+                double value = FunctionX.Calc(currentX);
+                //if (!test.TryGetValue(currentX, out value))
+                //{
+                //    var current = FunctionX.Calc(currentX);
+                //    test.Add(currentX, current);
+                //    value = current;
+                //}
+
                 if (inLimit(value))
                 {
                     list.Add(
@@ -98,10 +103,9 @@ namespace CalculatorUI.UserControls
                 );
             }
             
-            path.Data = geometry;
-            path.Stroke = Brushes.Red;
-            path.StrokeThickness = 4;
-            MainGrid.Children.Add(path);
+            Path.Data = geometry;
+            Path.Stroke = Brushes.Red;
+            Path.StrokeThickness = 4;
         }
 
         private double GetGridX(double position)
@@ -114,7 +118,6 @@ namespace CalculatorUI.UserControls
             return ActualHeight - position * ActualHeight / updatedScale;
         }
 
-        // need autoscale
         private void ScaleChanged(object sender, MouseWheelEventArgs e)
         {
             if (e.Delta > 0)
@@ -125,25 +128,19 @@ namespace CalculatorUI.UserControls
             {
                 Scale += Scale * 0.1;
             }
-
+            //var newVal = GetGridY(0);
+            //var offsetX = _centerGridX - newVal;
             _centerGridX = GetGridY(0);
-            AxisX.X1 = 0;
-            AxisX.Y1 = _centerGridX;
-            AxisX.X2 = ActualWidth;
-            AxisX.Y2 = _centerGridX;
-
             var minX = _centerX - Scale;
             var maxX = _centerX + Scale;
+            //double offsetY;
 
             if (minX < 0 && maxX > 0)
             {
-                //var a = -minX;
-                //var interval = maxX - minX;
-
-                //var item = a * 100 / interval * 0.01;
-                //var current = 2 * Scale * item;
-
+                //newVal = GetGridX(-minX);
+                //offsetY = _centerGridY - newVal;
                 _centerGridY = GetGridX(-minX);
+
             }
             else if (maxX < 0 || minX > 0)
             {
@@ -154,12 +151,10 @@ namespace CalculatorUI.UserControls
                 throw new Exception("lol");
             }
 
-            AxisY.X1 = _centerGridY;
-            AxisY.Y1 = 0;
-            AxisY.X2 = _centerGridY;
-            AxisY.Y2 = ActualHeight;
-            AxisY.Opacity = _centerGridY > 0 ? 1 : 0;
+            //X0_5.Margin = new Thickness(X0_5.Margin.Left + offsetX, X0_5.Margin.Top + offsetY, 0, 0);
+            //Y0_5.Margin = new Thickness(Y0_5.Margin.Left + offsetX, Y0_5.Margin.Top + offsetY, 0, 0);
 
+            UpdateAxis();
             UpdateGraph();
         }
 
@@ -181,17 +176,6 @@ namespace CalculatorUI.UserControls
                 _centerGridX += offsetY;
                 _centerGridY += offsetX;
 
-                AxisX.X1 = 0;
-                AxisX.Y1 = _centerGridX;
-                AxisX.X2 = ActualWidth;
-                AxisX.Y2 = _centerGridX;
-
-                AxisY.X1 = _centerGridY;
-                AxisY.Y1 = 0;
-                AxisY.X2 = _centerGridY;
-                AxisY.Y2 = ActualHeight;
-                AxisY.Opacity = _centerGridY > 0 ? 1 : 0;
-
                 _centerX -= offsetX * 2 * Scale / ActualWidth;
 
                 var updatedScale = Scale * 2 * ActualHeight / ActualWidth;
@@ -199,8 +183,11 @@ namespace CalculatorUI.UserControls
 
                 _lastPoint = point;
 
-                //Debug.WriteLine(_centerX + " " + _centerY);
+                X0_5.Margin = new Thickness(X0_5.Margin.Left + offsetX, X0_5.Margin.Top + offsetY, 0, 0);
+                Y0_5.Margin = new Thickness(Y0_5.Margin.Left + offsetX, Y0_5.Margin.Top + offsetY, 0, 0);
+                Debug.WriteLine(_centerX + " " + _centerY);
 
+                UpdateAxis();
                 UpdateGraph();
             }
         }
@@ -212,7 +199,7 @@ namespace CalculatorUI.UserControls
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            _centerGridX = ActualHeight / 2;
+            _centerGridX = ActualHeight / 2 + 1;
 
             AxisX.X1 = 0;
             AxisX.Y1 = _centerGridX;
@@ -224,7 +211,14 @@ namespace CalculatorUI.UserControls
             ViewX.X2 = ActualWidth;
             ViewX.Y2 = _centerGridX;
 
-            _centerGridY = ActualWidth / 2;
+
+            X0_5.Margin = new Thickness(GetGridX(Scale + Scale / 2), _centerGridX, 0 ,0);
+            X0_5.Content = (Scale / 2).ToString();
+
+            _centerGridY = ActualWidth / 2 + 1;
+
+            Y0_5.Margin = new Thickness(GetGridX(Scale), GetGridY(Scale / 2), 0, 0);
+            Y0_5.Content = (Scale / 2).ToString();
 
             AxisY.X1 = _centerGridY;
             AxisY.Y1 = 0;
@@ -235,6 +229,18 @@ namespace CalculatorUI.UserControls
             ViewY.Y1 = 0;
             ViewY.X2 = _centerGridY;
             ViewY.Y2 = ActualHeight;
+        }
+
+        private void UpdateAxis()
+        {
+            AxisX.Y1 = _centerGridX;
+            AxisX.X2 = ActualWidth;
+            AxisX.Y2 = _centerGridX;
+
+            AxisY.X1 = _centerGridY;
+            AxisY.X2 = _centerGridY;
+            AxisY.Y2 = ActualHeight;
+            AxisY.Opacity = _centerGridY > 0 ? 1 : 0;
         }
     }
 }

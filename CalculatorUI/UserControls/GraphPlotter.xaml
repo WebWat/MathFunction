@@ -12,11 +12,10 @@
         <Line Panel.ZIndex="101" Name="ViewX" Stroke="Gray" StrokeThickness="1"></Line>
         <Line Name="AxisY" Stroke="Black" StrokeThickness="2"></Line>
         <Line Name="AxisX" Stroke="Black" StrokeThickness="2"></Line>
-        <Label Name="X0_5"></Label>
-        <Label Name="Y0_5"></Label>
         <Border BorderBrush="Black" BorderThickness="1">
             <Grid x:Name="MainGrid">
                 <Path x:Name="Path"></Path>
+                <Label Name="Coords" VerticalAlignment="Bottom" HorizontalAlignment="Right" FontSize="20" Panel.ZIndex="101" Background="White">x: 0; y: 0</Label>
             </Grid>
         </Border>
     </Grid>

@@ -29,7 +29,6 @@ namespace CalculatorUI.UserControls
         private double _centerGridY;
 
         public int DotsCount { get; set; } = 500;
-        public Dictionary<double, double> test = new();
         
         public double Scale { get; set; } = 10;
 
@@ -59,12 +58,6 @@ namespace CalculatorUI.UserControls
             {
                 var currentX = minX + i * step;
                 double value = FunctionX.Calc(currentX);
-                //if (!test.TryGetValue(currentX, out value))
-                //{
-                //    var current = FunctionX.Calc(currentX);
-                //    test.Add(currentX, current);
-                //    value = current;
-                //}
 
                 if (inLimit(value))
                 {
@@ -128,17 +121,13 @@ namespace CalculatorUI.UserControls
             {
                 Scale += Scale * 0.1;
             }
-            //var newVal = GetGridY(0);
-            //var offsetX = _centerGridX - newVal;
+
             _centerGridX = GetGridY(0);
             var minX = _centerX - Scale;
             var maxX = _centerX + Scale;
-            //double offsetY;
 
             if (minX < 0 && maxX > 0)
             {
-                //newVal = GetGridX(-minX);
-                //offsetY = _centerGridY - newVal;
                 _centerGridY = GetGridX(-minX);
 
             }
@@ -150,9 +139,6 @@ namespace CalculatorUI.UserControls
             {
                 throw new Exception("lol");
             }
-
-            //X0_5.Margin = new Thickness(X0_5.Margin.Left + offsetX, X0_5.Margin.Top + offsetY, 0, 0);
-            //Y0_5.Margin = new Thickness(Y0_5.Margin.Left + offsetX, Y0_5.Margin.Top + offsetY, 0, 0);
 
             UpdateAxis();
             UpdateGraph();
@@ -183,9 +169,7 @@ namespace CalculatorUI.UserControls
 
                 _lastPoint = point;
 
-                X0_5.Margin = new Thickness(X0_5.Margin.Left + offsetX, X0_5.Margin.Top + offsetY, 0, 0);
-                Y0_5.Margin = new Thickness(Y0_5.Margin.Left + offsetX, Y0_5.Margin.Top + offsetY, 0, 0);
-                Debug.WriteLine(_centerX + " " + _centerY);
+                Coords.Content = $"x: {_centerX:f3}; y: {_centerY:f3}";
 
                 UpdateAxis();
                 UpdateGraph();
@@ -211,14 +195,7 @@ namespace CalculatorUI.UserControls
             ViewX.X2 = ActualWidth;
             ViewX.Y2 = _centerGridX;
 
-
-            X0_5.Margin = new Thickness(GetGridX(Scale + Scale / 2), _centerGridX, 0 ,0);
-            X0_5.Content = (Scale / 2).ToString();
-
             _centerGridY = ActualWidth / 2 + 1;
-
-            Y0_5.Margin = new Thickness(GetGridX(Scale), GetGridY(Scale / 2), 0, 0);
-            Y0_5.Content = (Scale / 2).ToString();
 
             AxisY.X1 = _centerGridY;
             AxisY.Y1 = 0;

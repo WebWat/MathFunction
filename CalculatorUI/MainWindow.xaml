@@ -14,9 +14,11 @@
             <ColumnDefinition></ColumnDefinition>
         </Grid.ColumnDefinitions>
         <StackPanel>
+            <Label>Количество точек:</Label>
             <TextBox x:Name="DotsCount">1000</TextBox>
             <Button Click="UpdateDotsCount_Click">Принять</Button>
-            <TextBox Name="text" Width="250" Grid.Column="0" HorizontalAlignment="Center" FontSize="15" TextAlignment="Center" VerticalContentAlignment="Center" Height="40" VerticalAlignment="Top" TextChanged="TextChanged"/>
+            <Label>Функция:</Label>
+            <TextBox Name="text" Width="250" HorizontalAlignment="Center" FontSize="15" TextAlignment="Center" VerticalContentAlignment="Center" Height="40" VerticalAlignment="Top" TextChanged="TextChanged"/>
         </StackPanel>
         <u:GraphPlotter x:Name="Graph" Grid.Column="1"></u:GraphPlotter>
     </Grid>

@@ -23,21 +23,25 @@ namespace CalculatorUI
             {
                 if (!string.IsNullOrEmpty(text.Text))
                 {
-                    Graph.test.Clear();
                     Graph.FunctionX = new FunctionX(text.Text);
                     Graph.UpdateGraph();
                 }
             }
-            catch (Exception)
+            catch
             {
-
             }
         }
 
         private void UpdateDotsCount_Click(object sender, RoutedEventArgs e)
         {
-            Graph.DotsCount = int.Parse(DotsCount.Text);
-            Graph.UpdateGraph();
+            try
+            {
+                Graph.DotsCount = int.Parse(DotsCount.Text);
+                Graph.UpdateGraph();
+            }
+            catch
+            {
+            }
         }
     }
 }

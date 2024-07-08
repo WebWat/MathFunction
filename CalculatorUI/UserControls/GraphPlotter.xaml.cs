@@ -40,7 +40,6 @@ namespace CalculatorUI.UserControls
             InitializeComponent();
         }
 
-
         public void UpdateGraph()
         {
             if (FunctionX == null) return;
@@ -51,8 +50,7 @@ namespace CalculatorUI.UserControls
             var minX = _centerX - Scale;
             var maxX = _centerX + Scale;
             var step = (maxX - minX) / DotsCount;
-            var updatedScale = Scale * ActualHeight / ActualWidth;
-            Predicate<double> inLimit = val => val <= _centerY + updatedScale && val >= _centerY - updatedScale;
+            Predicate<double> inLimit = val => val <= _centerY + Scale && val >= _centerY - Scale;
 
             for (int i = 0; i <= DotsCount; i++)
             {
@@ -129,15 +127,12 @@ namespace CalculatorUI.UserControls
             if (minX < 0 && maxX > 0)
             {
                 _centerGridY = GetGridX(-minX);
-
-            }
-            else if (maxX < 0 || minX > 0)
-            {
-                _centerGridY = 0;
             }
             else
             {
-                throw new Exception("lol");
+                var position = Scale - _centerX;
+                var current = position * ActualWidth / (2 * Scale);
+                _centerGridY = current;
             }
 
             UpdateAxis();
@@ -169,7 +164,7 @@ namespace CalculatorUI.UserControls
 
                 _lastPoint = point;
 
-                Coords.Content = $"x: {_centerX:f3}; y: {_centerY:f3}";
+                Coords.Content = $"x: {_centerX:f5}; y: {_centerY:f5}";
 
                 UpdateAxis();
                 UpdateGraph();
@@ -183,7 +178,7 @@ namespace CalculatorUI.UserControls
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
-            _centerGridX = ActualHeight / 2 + 1;
+            _centerGridX = ActualHeight / 2;
 
             AxisX.X1 = 0;
             AxisX.Y1 = _centerGridX;
@@ -195,7 +190,7 @@ namespace CalculatorUI.UserControls
             ViewX.X2 = ActualWidth;
             ViewX.Y2 = _centerGridX;
 
-            _centerGridY = ActualWidth / 2 + 1;
+            _centerGridY = ActualWidth / 2;
 
             AxisY.X1 = _centerGridY;
             AxisY.Y1 = 0;

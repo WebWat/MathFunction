@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:CalculatorUI"
         xmlns:u="clr-namespace:CalculatorUI.UserControls"
         mc:Ignorable="d"
-        Title="Calcultor" MinHeight="600" MinWidth="1000" Height="600" Width="1000">
+        Title="Calcultor" MinHeight="600" MinWidth="1000" Height="600" Width="1000" ResizeMode="CanMinimize">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="252"></ColumnDefinition>
